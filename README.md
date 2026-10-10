@@ -166,7 +166,7 @@ polling or automatic retry.
 - [x] Standalone Rails Client-only app and RC1 public API example
 - [x] Unit tests and GitHub Actions workflow defined
 - [x] [GitHub Actions CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38047415734) — installed public RC1 Gem, offline Client tests, routes and production-start guard
-- [ ] Independent Rails Server A2A v1.0 end-to-end HTTPS CI **passing** (workflow added, awaiting CI evidence)
+- [x] [Independent Rails Server real TLS E2E CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38048146899) — RC1 Client + stable 0.2.0 Server over isolated pinned TLS bridge
 - [x] [Parent Gem README cross-link](https://github.com/cuichangquan/a2a-rails/pull/118) merged
 - [ ] Step 30 full assessment / public-DNS positive-path evidence
 
