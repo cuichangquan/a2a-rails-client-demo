@@ -1,0 +1,44 @@
+name: A2A Rails Client-only demo
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RAILS_ENV: test
+      RACK_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.10'
+          bundler-cache: false
+      - run: bundle install
+      - name: Verify Gem installed from RubyGems, not Git source
+        run: |
+          bundle exec ruby -e '
+            require "bundler"
+            require "a2a-rails"
+            spec = Gem.loaded_specs.fetch("a2a-rails")
+            source = Bundler.load.specs.find { |s| s.name == "a2a-rails" }&.source
+            abort "wrong version" unless spec.version.to_s == "0.3.0.rc1"
+            abort "wrong constant" unless A2A::Rails::VERSION == "0.3.0.rc1"
+            abort "not RubyGems" unless source.is_a?(Bundler::Source::Rubygems)
+            puts "PASS a2a-rails 0.3.0.rc1 from RubyGems"
+          '
+      - name: Verify Client-only route isolation and probe behavior
+        run: bundle exec rake test
+      - name: Refuse production boot (demo-only)
+        run: |
+          if RAILS_ENV=production bundle exec rails runner 'puts "bad"' > "$RUNNER_TEMP/production-guard.log" 2>&1; then
+            echo "Unexpected production boot!" >&2
+            exit 1
+          fi
+          grep -q "Client demo is local-only" "$RUNNER_TEMP/production-guard.log"
