@@ -49,11 +49,54 @@ bundle install
 RAILS_ENV=test bundle exec rake test
 ```
 
-The CI workflow also verifies RubyGems origin and exact installed Gem version,
+The offline workflow verifies RubyGems origin and exact installed Gem version,
 both missing inbound routes, Task/direct Message behavior with a stub Client,
-and refusal to boot in Rails production mode.
+and refusal to boot in Rails production mode. An independent **separate-process
+HTTPS interoperability CI** runs against the unchanged published Server demo.
 
-**Offline tests do not establish a real remote HTTPS exchange.**
+Offline tests alone do not establish real HTTPS; see the separate Step 30-3 evidence below.
+
+## Step 30-3 — independent Rails-to-Rails real HTTPS CI
+
+[Dedicated interop workflow](.github/workflows/interop-https.yml) runs the
+**real public** `A2A::Rails::Client` API from this Client-only Rails app with the
+**installed RubyGems 0.3.0.rc1** and a separate, pinned checkout of
+[`a2a-rails-demo`](https://github.com/cuichangquan/a2a-rails-demo/tree/7cb002a63d6cc976b1562ee45e8a260771d7ef1d),
+using **published RubyGems 0.2.0** for the Server. It exercises the Rails
+`AgentClientDemo::Probe` service, as well as the protocol API.
+
+The Server intentionally runs development/test HTTP on `127.0.0.1:3000`,
+advertising an HTTP interface. The test starts a loopback-only bridge on port
+3443 with an **ephemeral self-signed TLS certificate for `echo-agent.test`**.
+The bridge passes JSON-RPC requests to the real Server (no canned JSON-RPC
+responses), but **rewrites only the Agent Card advertised JSONRPC interface URL**
+to `https://echo-agent.test:3443/a2a`.
+
+Because shipped SSRF policy correctly blocks loopback, the test uses a
+**test-only internal policy seam** in
+[`test/integration/real_https_echo.rb`](test/integration/real_https_echo.rb),
+pinning the TLS socket to `127.0.0.1` with an ephemeral test CA.
+This seam is not an application config, not available through the public
+constructor, and never used by `app/` or `bin/probe`.
+SNI / host / certificate verification and true pinned-socket TLS remain enabled.
+The suite *also verifies* the normal production policy rejects loopback, and a
+wrong TLS hostname fails.
+
+Expected CI checks:
+
+- Public Client Gem and independent Server Gem version/source identity
+- Real TLS Agent Card discovery and declared JSONRPC 1.0 interface
+- SendMessage completed Task, real Echo Service Artifact and GetTask
+- ListTasks scoped to context, page metadata, direct Message response
+- CancelTask terminal error and actual `AgentClientDemo::Probe` invocation
+- Exact HTTPS origin enforcement, production loopback rejection, wrong TLS SNI/host rejection
+
+**Scope:** a real two-process, two-Gem Rails Client↔Server exchange over
+locally terminated TLS; **not** a no-injection, public-DNS/public-CA or
+internet-facing production integration. No cloud, paid infrastructure, real
+credentials, changes to upstream Server or weaker shipped Client security.
+For such a production-shaped positive path, use separately approved and
+secured public DNS + HTTPS infrastructure.
 
 ## Run against an approved independent A2A Server
 
@@ -103,14 +146,17 @@ polling or automatic retry.
 
 - **No direct localhost/private-IP connection** from the real published
   Client. `http://127.0.0.1:3000` is intentionally rejected.
-- No injected resolver, fake CA, TLS disable, proxy workaround, anonymous
-  public production endpoint, or cross-origin token forwarding.
+- No test resolver/CA is exposed through application or production configuration.
+  The CI-only TLS harness uses an isolated ephemeral test CA and internal
+  loopback socket override; TLS peer validation remains enabled. No proxy
+  workaround, anonymous public production endpoint or cross-origin token forwarding.
 - Logs/printed summaries contain no request Part text, body or credentials.
   Keep all tokens out of Git, CI, errors and telemetry.
 - Ambiguous SendMessage timeout `may_have_executed = true` must **not** be
   auto-retried. Reconcile remote state according to your app's policy.
-- CI currently proves **Client app behavior using fakes**, not real remote
-  HTTPS exchange. See the parent Gem's native HTTPS interoperability tests.
+- Offline CI checks Client behavior using fakes. Dedicated interoperability CI
+  additionally tests the **real installed Client and Server Gems** over an
+  isolated local TLS bridge, subject to the scope above.
 - Server Echo demo currently binds localhost and refuses production mode; it
   cannot be reached by the real public-IP-only Client without a separate,
   explicitly approved isolated test harness or verified public HTTPS endpoint.
@@ -120,11 +166,13 @@ polling or automatic retry.
 - [x] Standalone Rails Client-only app and RC1 public API example
 - [x] Unit tests and GitHub Actions workflow defined
 - [x] [GitHub Actions CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38047415734) — installed public RC1 Gem, offline Client tests, routes and production-start guard
-- [ ] Independent Rails Server A2A v1.0 end-to-end HTTPS evidence
-- [ ] Parent Gem README cross-link and Step 30 final assessment
+- [x] [Independent Rails Server real TLS E2E CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38048146899) — RC1 Client + stable 0.2.0 Server over isolated pinned TLS bridge
+- [x] [Parent Gem README cross-link](https://github.com/cuichangquan/a2a-rails/pull/118) merged
+- [ ] Step 30 full assessment / public-DNS positive-path evidence
 
-The next milestone is an approved, independent HTTPS Server fixture and
-recorded end-to-end results, without changing production security rules.
+The next milestone after passing the isolated Rails-to-Rails HTTPS harness is
+separately approved, public-DNS + public-CA positive-path evidence, without
+changing production security rules.
 
 ## License
 
