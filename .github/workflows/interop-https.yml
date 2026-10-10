@@ -1,0 +1,133 @@
+name: Step 30 independent Rails-to-Rails HTTPS A2A
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  independent-https:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RAILS_ENV: test
+      RACK_ENV: test
+      RAILS_MAX_THREADS: "1"
+      WEB_CONCURRENCY: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.10'
+          bundler-cache: false
+
+      - name: Install Client and assert published RC1
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle install --jobs 4 --retry 3
+          bundle exec ruby -e '
+            require "bundler"
+            require "a2a-rails"
+            s = Gem.loaded_specs.fetch("a2a-rails")
+            source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
+            abort "wrong Gem/version/source" unless s.version.to_s == "0.3.0.rc1" &&
+              source.is_a?(Bundler::Source::Rubygems)
+            puts "PASS: Client Gem #{s.version} from RubyGems"
+          '
+
+      - name: Checkout pinned independent Server demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/cuichangquan/a2a-rails-demo.git "$RUNNER_TEMP/step30-server"
+          git -C "$RUNNER_TEMP/step30-server" checkout -q --detach 7cb002a63d6cc976b1562ee45e8a260771d7ef1d
+          test "$(git -C "$RUNNER_TEMP/step30-server" rev-parse HEAD)" = "7cb002a63d6cc976b1562ee45e8a260771d7ef1d"
+
+      - name: Install Server under its own isolated Gemfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          export BUNDLE_GEMFILE="$RUNNER_TEMP/step30-server/Gemfile"
+          bundle install --jobs 4 --retry 3
+          bundle exec ruby -e '
+            require "bundler"
+            require "a2a-rails"
+            s = Gem.loaded_specs.fetch("a2a-rails")
+            source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
+            abort "wrong Server Gem" unless s.version.to_s == "0.2.0" &&
+              source.is_a?(Bundler::Source::Rubygems)
+            puts "PASS: independent Server Gem 0.2.0 from RubyGems"
+          '
+
+      - name: Start isolated Rails Server on loopback
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd "$RUNNER_TEMP/step30-server"
+            export BUNDLE_GEMFILE="$RUNNER_TEMP/step30-server/Gemfile"
+            bundle exec rails server -b 127.0.0.1 -p 3000
+          ) > "$RUNNER_TEMP/step30-server.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/step30-server.pid"
+          for n in $(seq 1 60); do
+            if curl -fsS --noproxy '*' http://127.0.0.1:3000/.well-known/agent-card.json > /dev/null 2>&1; then
+              echo "PASS: independent Rails Server booted"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "FAIL: independent Rails Server did not boot" >&2
+          tail -n 35 "$RUNNER_TEMP/step30-server.log"
+          exit 1
+
+      - name: Generate short-lived test-only TLS cert
+        shell: bash
+        run: |
+          set -euo pipefail
+          openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
+            -keyout "$RUNNER_TEMP/step30-test.key" \
+            -out "$RUNNER_TEMP/step30-test.crt" \
+            -subj "/CN=echo-agent.test" \
+            -addext "subjectAltName=DNS:echo-agent.test" > /dev/null 2>&1
+          chmod 600 "$RUNNER_TEMP/step30-test.key"
+          echo "STEP30_TLS_CA=$RUNNER_TEMP/step30-test.crt" >> "$GITHUB_ENV"
+          echo "STEP30_TEST_ONLY_TLS=1" >> "$GITHUB_ENV"
+
+      - name: Start loopback-only HTTPS bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 test/support/https_bridge.py \
+            --certificate "$RUNNER_TEMP/step30-test.crt" \
+            --key "$RUNNER_TEMP/step30-test.key" \
+            > "$RUNNER_TEMP/step30-bridge.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/step30-bridge.pid"
+          for n in $(seq 1 60); do
+            if curl -fsS --noproxy '*' \
+              --cacert "$RUNNER_TEMP/step30-test.crt" \
+              --resolve echo-agent.test:3443:127.0.0.1 \
+              https://echo-agent.test:3443/.well-known/agent-card.json > "$RUNNER_TEMP/step30-card.json"; then
+              echo "PASS: TLS certificate, host and bridge validated"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "FAIL: TLS bridge did not start" >&2
+          tail -n 20 "$RUNNER_TEMP/step30-bridge.log"
+          exit 1
+
+      - name: Exercise published RC1 Client-only Rails application -> independent Rails Server (real HTTPS)
+        run: bundle exec ruby test/integration/real_https_echo.rb
+
+      - name: Cleanup local-only server and TLS process
+        if: always()
+        shell: bash
+        run: |
+          for name in step30-server step30-bridge; do
+            if test -f "$RUNNER_TEMP/$name.pid"; then
+              kill "$(cat "$RUNNER_TEMP/$name.pid")" 2>/dev/null || true
+            fi
+          done
