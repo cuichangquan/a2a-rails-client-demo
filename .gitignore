@@ -1,0 +1,12 @@
+# Local runtime and secrets
+.env
+.env.*
+!.env.example
+.bundle/
+/vendor/bundle/
+/log/*
+!/log/.keep
+/tmp/*
+!/tmp/.keep
+/coverage/
+.DS_Store
