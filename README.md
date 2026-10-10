@@ -98,6 +98,20 @@ credentials, changes to upstream Server or weaker shipped Client security.
 For such a production-shaped positive path, use separately approved and
 secured public DNS + HTTPS infrastructure.
 
+## Step 30-4 / Step 30-5 — Security checks and reproducibility
+
+- [日本語 Quick Start（再現手順）](docs/quickstart-ja.md): test commands, CI rerun, architecture and troubleshooting.
+- [Security verification matrix](docs/security-evidence.md): explicit application-level checks and remaining limitations.
+- [Manual independent TLS workflow](https://github.com/cuichangquan/a2a-rails-client-demo/actions/workflows/interop-https.yml): maintainers may rerun with **Run workflow**.
+
+The published Client demo now requires **both** a credential and its exact,
+allowlisted `*_CREDENTIAL_ORIGIN` for Card or RPC authentication.
+The offline tests reject incomplete audiences, unapproved hosts,
+mixed public/private DNS, local or metadata IPs; they check safe error
+text and ensure ambiguous Send/Cancel timeouts are never automatically retried.
+Tests use deterministic internal fixtures only; they do not weaken the Gem's
+production defaults.
+
 ## Run against an approved independent A2A Server
 
 ```bash
@@ -165,10 +179,11 @@ polling or automatic retry.
 
 - [x] Standalone Rails Client-only app and RC1 public API example
 - [x] Unit tests and GitHub Actions workflow defined
-- [x] [GitHub Actions CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38047415734) — installed public RC1 Gem, offline Client tests, routes and production-start guard
+- [x] Published RC1 Client-only Rails app; offline CI checks, routes and production-start guard
 - [x] [Independent Rails Server real TLS E2E CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38048146899) — RC1 Client + stable 0.2.0 Server over isolated pinned TLS bridge
 - [x] [Parent Gem README cross-link](https://github.com/cuichangquan/a2a-rails/pull/118) merged
-- [ ] Step 30 full assessment / public-DNS positive-path evidence
+- [x] Step 30-4 security regression tests and Step 30-5 reproducibility documentation (verify current CI run before closure)
+- [ ] Optional future public-DNS/public-CA direct Client positive-path proof (separate authorization and scope)
 
 The next milestone after passing the isolated Rails-to-Rails HTTPS harness is
 separately approved, public-DNS + public-CA positive-path evidence, without

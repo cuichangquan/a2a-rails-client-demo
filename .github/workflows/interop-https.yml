@@ -3,6 +3,7 @@ name: Step 30 independent Rails-to-Rails HTTPS A2A
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
