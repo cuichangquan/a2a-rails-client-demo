@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+require_relative "../config/environment"
+require "json"
+
+begin
+  client = AgentClientDemo::ClientFactory.build
+  summary = AgentClientDemo::Probe.new(client: client).run
+  puts JSON.pretty_generate(summary)
+rescue ArgumentError
+  warn "Missing/invalid demo configuration (check A2A_AGENT_CARD_URL and A2A_ALLOWED_ORIGINS)"
+  exit 1
+rescue A2A::Rails::Client::TimeoutError => error
+  warn "A2A timeout (may_have_executed=#{error.may_have_executed}); no automatic retry"
+  exit 1
+rescue A2A::Rails::Client::Error => error
+  warn "A2A request failed: #{error.class.name.split('::').last}" # no remote body/token
+  exit 1
+end
