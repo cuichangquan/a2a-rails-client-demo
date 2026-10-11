@@ -55,7 +55,7 @@ and selects patched `net-imap ~> 0.5.15` for the full Rails host,
 with `json >= 2.19.9, < 3` checked against the installed Gem dependencies,
 both missing inbound routes, Task/direct Message behavior with a stub Client,
 and refusal to boot in Rails production mode. An independent **separate-process
-HTTPS interoperability CI** runs against the unchanged published Server demo.
+HTTPS interoperability CI** runs against the separately upgraded published Server demo.
 
 Offline tests alone do not establish real HTTPS; see the separate Step 32 evidence below.
 
@@ -184,7 +184,7 @@ polling or automatic retry.
 - [x] Unit tests and GitHub Actions workflow defined
 - [x] Published stable 0.3.0 Client-only Rails app; offline CI checks, routes and production-start guard
 - [x] [Historical Step 30 isolated TLS E2E PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38048146899) — RC1 Client + stable 0.2.0 Server (historical evidence, not Step 32 proof)
-- [ ] Step 32 stable 0.3.0 ↔ stable 0.3.0 isolated real TLS E2E CI (check this repo's latest Actions run)
+- [x] [Step 32 stable 0.3.0 ↔ stable 0.3.0 isolated real TLS E2E CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38097502218) — separate Rails processes, independently resolved RubyGems packages and test-only verified TLS bridge
 - [x] [Parent Gem README cross-link](https://github.com/cuichangquan/a2a-rails/pull/118) merged
 - [x] Step 30-4 security regression tests and Step 30-5 reproducibility documentation (reused for Step 32; verify new CI run)
 - [ ] Optional future public-DNS/public-CA direct Client positive-path proof (separate authorization and scope)
