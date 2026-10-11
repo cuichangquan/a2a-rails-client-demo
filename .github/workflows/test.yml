@@ -28,10 +28,14 @@ jobs:
             require "a2a-rails"
             spec = Gem.loaded_specs.fetch("a2a-rails")
             source = Bundler.load.specs.find { |s| s.name == "a2a-rails" }&.source
-            abort "wrong version" unless spec.version.to_s == "0.3.0.rc1"
-            abort "wrong constant" unless A2A::Rails::VERSION == "0.3.0.rc1"
+            abort "wrong version" unless spec.version.to_s == "0.3.0"
+            abort "wrong constant" unless A2A::Rails::VERSION == "0.3.0"
             abort "not RubyGems" unless source.is_a?(Bundler::Source::Rubygems)
-            puts "PASS a2a-rails 0.3.0.rc1 from RubyGems"
+            json_spec = Bundler.load.specs.find { |s| s.name == "json" }
+            imap_spec = Bundler.load.specs.find { |s| s.name == "net-imap" }
+            abort "unpatched json" unless json_spec && Gem::Requirement.new(">= 2.19.9", "< 3").satisfied_by?(json_spec.version)
+            abort "unpatched net-imap" unless imap_spec && Gem::Requirement.new("~> 0.5.15").satisfied_by?(imap_spec.version)
+            puts "PASS a2a-rails 0.3.0 from RubyGems, json #{json_spec.version}, net-imap #{imap_spec.version}"
           '
       - name: Verify Client-only route isolation and probe behavior
         run: bundle exec rake test

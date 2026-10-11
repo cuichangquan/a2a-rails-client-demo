@@ -1,4 +1,4 @@
-name: Step 30 independent Rails-to-Rails HTTPS A2A
+name: Step 32 stable 0.3.0 independent Rails-to-Rails HTTPS A2A
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
           ruby-version: '3.4.10'
           bundler-cache: false
 
-      - name: Install Client and assert published RC1
+      - name: Install Client and assert published stable 0.3.0
         shell: bash
         run: |
           set -euo pipefail
@@ -34,7 +34,7 @@ jobs:
             require "a2a-rails"
             s = Gem.loaded_specs.fetch("a2a-rails")
             source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
-            abort "wrong Gem/version/source" unless s.version.to_s == "0.3.0.rc1" &&
+            abort "wrong Gem/version/source" unless s.version.to_s == "0.3.0" &&
               source.is_a?(Bundler::Source::Rubygems)
             puts "PASS: Client Gem #{s.version} from RubyGems"
           '
@@ -44,8 +44,8 @@ jobs:
         run: |
           set -euo pipefail
           git clone -q https://github.com/cuichangquan/a2a-rails-demo.git "$RUNNER_TEMP/step30-server"
-          git -C "$RUNNER_TEMP/step30-server" checkout -q --detach 7cb002a63d6cc976b1562ee45e8a260771d7ef1d
-          test "$(git -C "$RUNNER_TEMP/step30-server" rev-parse HEAD)" = "7cb002a63d6cc976b1562ee45e8a260771d7ef1d"
+          git -C "$RUNNER_TEMP/step30-server" checkout -q --detach 1b66a689b2cc8bd16052e9b3a8647072cfe13ec7
+          test "$(git -C "$RUNNER_TEMP/step30-server" rev-parse HEAD)" = "1b66a689b2cc8bd16052e9b3a8647072cfe13ec7"
 
       - name: Install Server under its own isolated Gemfile
         shell: bash
@@ -58,9 +58,9 @@ jobs:
             require "a2a-rails"
             s = Gem.loaded_specs.fetch("a2a-rails")
             source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
-            abort "wrong Server Gem" unless s.version.to_s == "0.2.0" &&
+            abort "wrong Server Gem" unless s.version.to_s == "0.3.0" &&
               source.is_a?(Bundler::Source::Rubygems)
-            puts "PASS: independent Server Gem 0.2.0 from RubyGems"
+            puts "PASS: independent Server Gem 0.3.0 from RubyGems"
           '
 
       - name: Start isolated Rails Server on loopback
@@ -120,7 +120,7 @@ jobs:
           tail -n 20 "$RUNNER_TEMP/step30-bridge.log"
           exit 1
 
-      - name: Exercise published RC1 Client-only Rails application -> independent Rails Server (real HTTPS)
+      - name: Exercise published stable 0.3.0 Client-only Rails application -> independent Rails Server (real HTTPS)
         run: bundle exec ruby test/integration/real_https_echo.rb
 
       - name: Cleanup local-only server and TLS process

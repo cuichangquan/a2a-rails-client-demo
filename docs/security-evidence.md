@@ -1,6 +1,6 @@
-# Step 30-4 verification matrix
+# Step 32 stable v0.3.0 verification matrix
 
-This demo checks integration safety for the **published** a2a-rails RC1.
+This demo checks integration safety for the **published** a2a-rails stable 0.3.0.
 It is not a production deployment review.
 
 | Scenario | Test |
@@ -13,7 +13,7 @@ It is not a production deployment review.
 | TLS hostname mismatch and pinned network socket | integration/real_https_echo.rb |
 | Independent Rails 8 Server actual Task/Message | integration/real_https_echo.rb |
 | Client-only routes absent | client_only_routes_test.rb |
-| Public RubyGems dependency identity | GitHub Actions workflows |
+| Public RubyGems dependency identity (`0.3.0`) and host dependency bounds (`json`, `net-imap`) | GitHub Actions workflows |
 
 The full integration test uses an isolated loopback TLS bridge and a
 temporary certificate. It is not a public DNS/public CA connection test.

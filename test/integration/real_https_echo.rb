@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # TEST-ONLY: actual public Gem + Client-only Rails host -> independent published
-# 0.2.0 Rails Server over an ephemeral TLS bridge and pinned loopback socket.
+# 0.3.0 Rails Server over an ephemeral TLS bridge and pinned loopback socket.
 # Do not copy the test-only policy/resolver into runtime application code.
 ENV["RAILS_ENV"] = "test"
 require_relative "../../config/environment"
@@ -69,9 +69,9 @@ module Step30HttpsInterop
   def self.run!
     spec = Gem.loaded_specs.fetch("a2a-rails")
     source = Bundler.load.specs.find { |s| s.name == "a2a-rails" }&.source
-    check!(spec.version.to_s == "0.3.0.rc1" &&
+    check!(spec.version.to_s == "0.3.0" &&
       source.is_a?(Bundler::Source::Rubygems),
-      "real Rails Client uses published RubyGems 0.3.0.rc1")
+      "real Rails Client uses published RubyGems 0.3.0")
 
     ca = ENV.fetch("STEP30_TLS_CA")
     check!(File.file?(ca), "ephemeral test CA exists")
@@ -110,7 +110,7 @@ module Step30HttpsInterop
     check!(interface && interface[:url] == "#{ORIGIN}/a2a",
       "real HTTPS JSON-RPC v1.0 interface selected from Agent Card")
 
-    message = "Hello from RC1 Client-only Rails"
+    message = "Hello from stable 0.3.0 Client-only Rails"
     result = client.send_message(message: {
       message_id: SecureRandom.uuid,
       role: "ROLE_USER",
@@ -159,7 +159,7 @@ module Step30HttpsInterop
     check!((policy.paths & ["/.well-known/agent-card.json", "/a2a"]).size == 2,
       "both Agent Card and RPC used real pinned TLS transport")
     check!(policy.origins.uniq == [ORIGIN], "no other HTTPS origin used")
-    puts "STEP30 REAL PUBLISHED RC1 CLIENT <-> INDEPENDENT RAILS SERVER TLS: PASS"
+    puts "STEP32 REAL PUBLISHED STABLE 0.3.0 CLIENT <-> INDEPENDENT RAILS SERVER TLS: PASS"
   end
 end
 
