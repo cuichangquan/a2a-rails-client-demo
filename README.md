@@ -1,14 +1,15 @@
 # a2a-rails-client-demo — Rails 8 A2A outbound Client
 
-A standalone **Client-only Rails 8 application** demonstrating the public
-[`a2a-rails 0.3.0.rc1`](https://rubygems.org/gems/a2a-rails/versions/0.3.0.rc1)
-prerelease Gem. It sends A2A v1.0 Agent Card discovery and JSON-RPC requests to
+A standalone **Client-only Rails 8 application** demonstrating the released
+[`a2a-rails 0.3.0`](https://rubygems.org/gems/a2a-rails/versions/0.3.0)
+stable Gem. It sends A2A v1.0 Agent Card discovery and JSON-RPC requests to
 a separate approved Agent, while never serving an inbound A2A endpoint.
 
 - Gem and roadmap: https://github.com/cuichangquan/a2a-rails
 - Independent [Rails Server Echo demo](https://github.com/cuichangquan/a2a-rails-demo)
-  (currently pinned to released stable 0.2.0; **not modified**)
-- Work tracker: [Step 30 Issue #117](https://github.com/cuichangquan/a2a-rails/issues/117)
+  (independently upgraded to released stable 0.3.0 for Step 32)
+- Historical setup: [Step 30 Issue #117](https://github.com/cuichangquan/a2a-rails/issues/117)
+- Step 32: revalidate independent Client and Server against **both published stable 0.3.0** Gems.
 
 > **Local development/test only.** This Client host refuses production boot.
 > Do not weaken published Gem SSL validation, IP pinning, SSRF policy,
@@ -35,7 +36,7 @@ does not register a local Agent or Task Store and has no inbound
 ## Prerequisites
 
 - Ruby **3.4.10**, Rails **8.1.4**, Bundler
-- Published `a2a-rails = 0.3.0.rc1` from RubyGems, **not** Git checkout
+- Published `a2a-rails = 0.3.0` from RubyGems, **not** Git checkout
 - For real remote checks, an approved A2A v1.0 JSON-RPC Agent reachable on a
   **public-destination IP, public-DNS hostname, valid CA-issued HTTPS certificate**
 - No external AI provider, database, Redis, Docker, or GCP required for offline tests
@@ -50,19 +51,21 @@ RAILS_ENV=test bundle exec rake test
 ```
 
 The offline workflow verifies RubyGems origin and exact installed Gem version,
+and selects patched `net-imap ~> 0.5.15` for the full Rails host,
+with `json >= 2.19.9, < 3` checked against the installed Gem dependencies,
 both missing inbound routes, Task/direct Message behavior with a stub Client,
 and refusal to boot in Rails production mode. An independent **separate-process
-HTTPS interoperability CI** runs against the unchanged published Server demo.
+HTTPS interoperability CI** runs against the separately upgraded published Server demo.
 
-Offline tests alone do not establish real HTTPS; see the separate Step 30-3 evidence below.
+Offline tests alone do not establish real HTTPS; see the separate Step 32 evidence below.
 
-## Step 30-3 — independent Rails-to-Rails real HTTPS CI
+## Step 32 — independent Rails-to-Rails real HTTPS CI
 
 [Dedicated interop workflow](.github/workflows/interop-https.yml) runs the
 **real public** `A2A::Rails::Client` API from this Client-only Rails app with the
-**installed RubyGems 0.3.0.rc1** and a separate, pinned checkout of
-[`a2a-rails-demo`](https://github.com/cuichangquan/a2a-rails-demo/tree/7cb002a63d6cc976b1562ee45e8a260771d7ef1d),
-using **published RubyGems 0.2.0** for the Server. It exercises the Rails
+**installed RubyGems 0.3.0** and a separate, pinned checkout of
+[`a2a-rails-demo`](https://github.com/cuichangquan/a2a-rails-demo/tree/1b66a689b2cc8bd16052e9b3a8647072cfe13ec7),
+using **published RubyGems 0.3.0** for the Server. It exercises the Rails
 `AgentClientDemo::Probe` service, as well as the protocol API.
 
 The Server intentionally runs development/test HTTP on `127.0.0.1:3000`,
@@ -171,18 +174,19 @@ polling or automatic retry.
 - Offline CI checks Client behavior using fakes. Dedicated interoperability CI
   additionally tests the **real installed Client and Server Gems** over an
   isolated local TLS bridge, subject to the scope above.
-- Server Echo demo currently binds localhost and refuses production mode; it
+- Server Echo demo binds localhost and refuses production mode; it
   cannot be reached by the real public-IP-only Client without a separate,
   explicitly approved isolated test harness or verified public HTTPS endpoint.
 
 ## Delivery status
 
-- [x] Standalone Rails Client-only app and RC1 public API example
+- [x] Standalone Rails Client-only app and stable 0.3.0 public API example
 - [x] Unit tests and GitHub Actions workflow defined
-- [x] Published RC1 Client-only Rails app; offline CI checks, routes and production-start guard
-- [x] [Independent Rails Server real TLS E2E CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38048146899) — RC1 Client + stable 0.2.0 Server over isolated pinned TLS bridge
+- [x] Published stable 0.3.0 Client-only Rails app; offline CI checks, routes and production-start guard
+- [x] [Historical Step 30 isolated TLS E2E PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38048146899) — RC1 Client + stable 0.2.0 Server (historical evidence, not Step 32 proof)
+- [x] [Step 32 stable 0.3.0 ↔ stable 0.3.0 isolated real TLS E2E CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38097502218) — separate Rails processes, independently resolved RubyGems packages and test-only verified TLS bridge
 - [x] [Parent Gem README cross-link](https://github.com/cuichangquan/a2a-rails/pull/118) merged
-- [x] Step 30-4 security regression tests and Step 30-5 reproducibility documentation (verify current CI run before closure)
+- [x] Step 30-4 security regression tests and Step 30-5 reproducibility documentation (reused for Step 32; verify new CI run)
 - [ ] Optional future public-DNS/public-CA direct Client positive-path proof (separate authorization and scope)
 
 The next milestone after passing the isolated Rails-to-Rails HTTPS harness is

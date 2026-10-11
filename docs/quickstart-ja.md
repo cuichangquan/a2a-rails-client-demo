@@ -1,17 +1,17 @@
-# Step 30 — 日本語 Quick Start / 再現手順
+# Step 32 — 安定版 0.3.0 日本語 Quick Start / 再現手順
 
 ## 構成
 
 | 役割 | リポジトリ | 公開Gem |
 | --- | --- | --- |
-| A2A Client | [a2a-rails-client-demo](https://github.com/cuichangquan/a2a-rails-client-demo) | `0.3.0.rc1` |
-| A2A Server (Echo) | [a2a-rails-demo](https://github.com/cuichangquan/a2a-rails-demo) | `0.2.0` |
+| A2A Client | [a2a-rails-client-demo](https://github.com/cuichangquan/a2a-rails-client-demo) | `0.3.0` |
+| A2A Server (Echo) | [a2a-rails-demo](https://github.com/cuichangquan/a2a-rails-demo) | `0.3.0` |
 
-Clientは `server_enabled = false` に設定し、受信側A2Aルートを持ちません。Serverは既存のEchoデモを変更せず利用します。
+Clientは `server_enabled = false` に設定し、受信側A2Aルートを持ちません。Serverは別リポジトリで正式版`0.3.0`に更新したEchoデモを利用します。両アプリは異なるBundler環境で公開Gemをロードします。
 
 ## ① 基本テストを実行
 
-Ruby 3.4.10、Bundlerが必要です。
+Ruby 3.4.10、Bundlerが必要です。Railsホストの`net-imap`は修正版`~>0.5.15`を明示指定します。
 
 ```bash
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
@@ -33,7 +33,7 @@ gh run list --repo cuichangquan/a2a-rails-client-demo --workflow interop-https.y
 
 実際にCI内で実行すること：
 
-1. Client (0.3.0.rc1) とServer (0.2.0) を **それぞれ公開RubyGemsからインストール**。
+1. Client (0.3.0) とServer (0.3.0) を **それぞれ公開RubyGemsからインストール**。Serverは固定したマージ済みコミットをチェックアウト。
 2. Serverを `127.0.0.1:3000` のみで起動。
 3. 一時証明書で `127.0.0.1:3443` にTLSブリッジを起動。
 4. ClientがAgent Card取得→SendMessage→Task/Artifact→GetTask/ListTasks→直接Messageを実行。
@@ -41,13 +41,13 @@ gh run list --repo cuichangquan/a2a-rails-client-demo --workflow interop-https.y
 6. テスト専用プロセスを終了。
 
 ```text
-Rails Client 0.3.0.rc1
+Rails Client 0.3.0
       │   HTTPS (検証付きTLS / socket IP pinning)
       ▼
 テスト専用TLSブリッジ（127.0.0.1:3443）
       │   CI内部のみでHTTP
       ▼
-独立Rails Echo Server 0.2.0（127.0.0.1:3000）
+独立Rails Echo Server 0.3.0（127.0.0.1:3000）
       │
       ▼
 Echo::Reply → Task / Artifact / Message
