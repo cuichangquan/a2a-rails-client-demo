@@ -1,15 +1,12 @@
-# Published Echo baseline and structured-report candidate verification
+# Published 0.4.0 Echo and structured-report verification
 
-This demo checks integration safety for the **published** a2a-rails stable 0.3.0.
-It is not a production deployment review.
-
-The 0.4.0 report candidate uses a separate, exact Git revision in
-`Gemfile.candidate`. Its added normal functional checks are
-`report_probe_test.rb` (Data send/result reading and invalid month) and the
-candidate branch of `integration/real_https_echo.rb` (real report, GetTask Data
-history/Artifact, and business rejection). The existing bridge and protection
-checks below are unchanged. Run reports must distinguish candidate SHA evidence
-from historical published 0.3.0 evidence; see [candidate instructions](report-candidate.md).
+Both applications load RubyGems 0.4.0. Offline `report_probe_test.rb` covers
+Data send/result reading and invalid month; `integration/real_https_echo.rb`
+always exercises real report, GetTask Data history/Artifact and business rejection.
+CI verifies package source, version and SHA256. The bridge and protection checks
+below are unchanged. Historical 0.3.0 and Git-candidate results are not evidence
+for this published-package run. See [the walkthrough](report.md).
+This is not a production deployment review.
 
 | Scenario | Test |
 | --- | --- |
@@ -21,7 +18,7 @@ from historical published 0.3.0 evidence; see [candidate instructions](report-ca
 | TLS hostname mismatch and pinned network socket | integration/real_https_echo.rb |
 | Independent Rails 8 Server actual Task/Message | integration/real_https_echo.rb |
 | Client-only routes absent | client_only_routes_test.rb |
-| Public RubyGems dependency identity (`0.3.0`) and host dependency bounds (`json`, `net-imap`) | GitHub Actions workflows |
+| Public RubyGems dependency identity (`0.4.0`) and host dependency bounds (`json`, `net-imap`) | GitHub Actions workflows |
 
 The full integration test uses an isolated loopback TLS bridge and a
 temporary certificate. It is not a public DNS/public CA connection test.

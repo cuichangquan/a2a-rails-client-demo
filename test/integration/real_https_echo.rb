@@ -2,7 +2,7 @@
 
 # TEST-ONLY: actual public Client API + Client-only Rails host -> independent
 # Rails Server over the existing ephemeral TLS bridge and pinned loopback socket.
-# A fixed candidate SHA is distinct from evidence for published 0.3.0.
+# Both applications load the published RubyGems 0.4.0 package.
 # Do not copy the test-only policy/resolver into runtime application code.
 ENV["RAILS_ENV"] = "test"
 require_relative "../../config/environment"
@@ -70,16 +70,8 @@ module Step30HttpsInterop
   def self.run!
     spec = Gem.loaded_specs.fetch("a2a-rails")
     source = Bundler.load.specs.find { |s| s.name == "a2a-rails" }&.source
-    candidate_sha = ENV["A2A_CANDIDATE_SHA"]
-    candidate_sha = nil if candidate_sha == ""
-    if candidate_sha
-      check!(candidate_sha.match?(/\A[0-9a-f]{40}\z/) &&
-        source.is_a?(Bundler::Source::Git) && source.revision == candidate_sha,
-        "real Rails Client uses the exact unpublished candidate SHA")
-    else
-      check!(spec.version.to_s == "0.3.0" && source.is_a?(Bundler::Source::Rubygems),
-        "real Rails Client uses published RubyGems 0.3.0")
-    end
+    check!(spec.version.to_s == "0.4.0" && source.is_a?(Bundler::Source::Rubygems),
+      "real Rails Client uses published RubyGems 0.4.0")
 
     ca = ENV.fetch("STEP30_TLS_CA")
     check!(File.file?(ca), "ephemeral test CA exists")
@@ -164,12 +156,11 @@ module Step30HttpsInterop
     check!(summary[:agent] == "Echo Agent" &&
       summary[:samples].map { |r| r[:kind] } == %w[task message],
       "Client-only Rails Probe service executed against actual remote Rails Server")
-    exercise_report!(client, card) if candidate_sha
+    exercise_report!(client, card)
     check!((policy.paths & ["/.well-known/agent-card.json", "/a2a"]).size == 2,
       "both Agent Card and RPC used real pinned TLS transport")
     check!(policy.origins.uniq == [ORIGIN], "no other HTTPS origin used")
-    puts(candidate_sha ? "UNPUBLISHED CANDIDATE CLIENT <-> INDEPENDENT RAILS REPORT SERVER TLS: PASS" :
-      "STEP32 REAL PUBLISHED STABLE 0.3.0 CLIENT <-> INDEPENDENT RAILS SERVER TLS: PASS")
+    puts "PUBLISHED 0.4.0 CLIENT <-> INDEPENDENT RAILS REPORT SERVER TLS: PASS"
   end
 
   def self.exercise_report!(client, card)

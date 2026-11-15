@@ -1,29 +1,24 @@
-# 公開0.3.0と構造化レポート候補の日本語 Quick Start
+# 公開0.4.0の日本語 Quick Start
 
-## 0.4.0候補: DataでRailsの集計Serviceを呼ぶ
+## DataでRailsの集計Serviceを呼ぶ
 
-新しいレポート例は**未公開の固定Gem SHA**を`Gemfile.candidate`で使用します。
-ClientとServerの両方に同じ候補が必要です。通常のGemfileは公開0.3.0のEcho用で、
-この候補をRubyGemsから取得できるという意味ではありません。以下のStep32記録は
-従来の公開版検証であり、新しい候補の検証結果とは区別します。
+ClientとServerは両方とも公開RubyGems `a2a-rails = 0.4.0`を使います。
+Git/path候補は不要です。CIは公開版の取得元、版、配布GemのSHA256
+`77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a`
+を照合します。Serverの固定コミットは `5f6d3bfb76c174484ac5b03eac8cfe72038ee3be` です。
+過去の0.3.0／Git候補の検証記録は、公開0.4.0の結果とは区別します。
 
-候補Gemは`e13b3ef06698990c6a7b9e1522bf09f7c38e31c5`、独立Serverは
-`db100a2b05c14f0ec693918593adaa141a43cfce`へ固定しています。候補ソースの
-version定数は公開準備前の0.3.0のままなので、公開RubyGems版とはGit SHAで区別します。
-既存のoffline/TLS workflowは公開版と候補を別jobで検証し、各job上限は8分です。
+PR #4のマージ前はclone後に `git switch feat/structured-report-candidate` でPRを選びます。マージ後はmainを使えます。
 
 ```sh
-git clone --branch feat/structured-report-candidate --single-branch https://github.com/cuichangquan/a2a-rails-client-demo.git
+git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
 cd a2a-rails-client-demo
-BUNDLE_GEMFILE=Gemfile.candidate bundle install
-BUNDLE_GEMFILE=Gemfile.candidate RAILS_ENV=test bundle exec rake test
-# 既存のURL・origin設定で、許可を得た独立HTTPS report Agentに送信する場合:
-BUNDLE_GEMFILE=Gemfile.candidate bundle exec ruby bin/report
-BUNDLE_GEMFILE=Gemfile.candidate bundle exec ruby bin/report --invalid-month
+bundle install
+RAILS_ENV=test bundle exec rake test
+# 許可を得た独立HTTPS report AgentのURL・originを設定した後:
+bundle exec ruby bin/report
+bundle exec ruby bin/report --invalid-month
 ```
-
-マージ前はこの候補PR branchを使い、公開mainから候補ファイルを取得できるとは
-扱いません。Serverもfeat/structured-report-demo branchの上記固定SHAを使います。
 
 送信Dataは`{"year":2026,"month":10,"department_id":123}`です。
 Serverの既存RouterがDataをreport Skill、textをreply Skillへ振り分けます。
@@ -43,26 +38,19 @@ text/Data混在は今回対象外です。既存Hash/Array出力は維持され�
 AP2正式拡張、File入力、SSE、Task再開、本番公開はこの候補に含みません。
 
 実通信には既存の一時証明書・TLS bridge・`real_https_echo.rb`を使います。
-通常Clientのlocalhost拒否を解除しません。ローカル実行も可能な既存手順と、
-固定SHAの照合、条件・結果・GetTask・月13の確認範囲は
-[英語の候補手順](report-candidate.md)に記載しています。
-公開後は両デモを新しい公開Gemへ固定し、RubyGems由来の確認と同じ検証を再実行します。
+通常Clientのlocalhost拒否を解除しません。[英語の実行手順](report.md)に、
+Serverの起動とClientからのTLS実通信手順があります。
 
-2026-11-15のローカルLinux/Ruby3.4.12では、Clientは公開版・候補とも14 tests /
-80 assertions、Server業務テストは5 / 17で失敗なしでした。候補の実HTTP・
-実TLSで条件送信、3件35,000円、GetTask、月13拒否と既存Echo/directの経路も確認済みです。
-CIはリポジトリ指定のRuby3.4.10で別途検証し、最終commitの結果は対応PRを参照してください。
-
-## 以下は公開0.3.0のEcho基準手順（Step32）
+## 通常操作と実通信の確認
 
 ## 構成
 
 | 役割 | リポジトリ | 公開Gem |
 | --- | --- | --- |
-| A2A Client | [a2a-rails-client-demo](https://github.com/cuichangquan/a2a-rails-client-demo) | `0.3.0` |
-| A2A Server (Echo) | [a2a-rails-demo](https://github.com/cuichangquan/a2a-rails-demo) | `0.3.0` |
+| A2A Client | [a2a-rails-client-demo](https://github.com/cuichangquan/a2a-rails-client-demo) | `0.4.0` |
+| A2A Server (Echo / Report) | [a2a-rails-demo](https://github.com/cuichangquan/a2a-rails-demo) | `0.4.0` |
 
-Clientは `server_enabled = false` に設定し、受信側A2Aルートを持ちません。Serverは別リポジトリで正式版`0.3.0`に更新したEchoデモを利用します。両アプリは異なるBundler環境で公開Gemをロードします。
+Clientは `server_enabled = false` に設定し、受信側A2Aルートを持ちません。Serverは別リポジトリで正式版`0.4.0`に更新したEchoデモを利用します。両アプリは異なるBundler環境で公開Gemをロードします。
 
 ## ① 基本テストを実行
 
@@ -88,21 +76,21 @@ gh run list --repo cuichangquan/a2a-rails-client-demo --workflow interop-https.y
 
 実際にCI内で実行すること：
 
-1. Client (0.3.0) とServer (0.3.0) を **それぞれ公開RubyGemsからインストール**。Serverは固定したマージ済みコミットをチェックアウト。
+1. Client (0.4.0) とServer (0.4.0) を **それぞれ公開RubyGemsからインストール**。Serverは固定したマージ済みコミットをチェックアウト。
 2. Serverを `127.0.0.1:3000` のみで起動。
 3. 一時証明書で `127.0.0.1:3443` にTLSブリッジを起動。
-4. ClientがAgent Card取得→SendMessage→Task/Artifact→GetTask/ListTasks→直接Messageを実行。
+4. ClientがAgent Card取得→SendMessage→Task/Artifact→GetTask/ListTasks→直接Messageを実行。レポートの3件35,000円、Data履歴、月13の拒否も確認。
 5. 終了したTaskのCancelTaskエラーと実際のEcho Service戻り値を確認。
 6. テスト専用プロセスを終了。
 
 ```text
-Rails Client 0.3.0
+Rails Client 0.4.0
       │   HTTPS (検証付きTLS / socket IP pinning)
       ▼
 テスト専用TLSブリッジ（127.0.0.1:3443）
       │   CI内部のみでHTTP
       ▼
-独立Rails Echo Server 0.3.0（127.0.0.1:3000）
+独立Rails Echo Server 0.4.0（127.0.0.1:3000）
       │
       ▼
 Echo::Reply → Task / Artifact / Message
@@ -135,3 +123,11 @@ bundle exec ruby bin/probe
 | ローカルServerに直結できない | Clientの本番向けSSRF制限の仕様。CI専用TLS検証を使う |
 
 本番公開の認証、権限、監査、耐久性、レート制限については [Issue #11](https://github.com/cuichangquan/a2a-rails/issues/11) を参照してください。
+
+## 公開Gemの検証記録
+
+2026-11-15、Linux x86_64 / Ruby 3.4.12 / Rails 8.1.4で、両アプリが
+上記SHA256の公開0.4.0 Gemを読み込むことを確認しました。Clientは14 tests /
+80 assertions、production起動拒否、別プロセス間TLSの25項目がすべて成功しました。
+条件送信・3件35,000円・Data履歴/GetTask・月13拒否と既存Echo/directの経路を含みます。
+CIはRuby 3.4.10で別途実行するため、ローカル結果とは区別してPRの該当commitを確認してください。
