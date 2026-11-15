@@ -5,10 +5,8 @@
 ClientとServerは両方とも公開RubyGems `a2a-rails = 0.4.0`を使います。
 Git/path候補は不要です。CIは公開版の取得元、版、配布GemのSHA256
 `77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a`
-を照合します。Serverの固定コミットは `5f6d3bfb76c174484ac5b03eac8cfe72038ee3be` です。
+を照合します。Serverの固定コミットは `68d929cd93494acd163fb9d12c6309ca916068b7` です。
 過去の0.3.0／Git候補の検証記録は、公開0.4.0の結果とは区別します。
-
-PR #4のマージ前はclone後に `git switch feat/structured-report-candidate` でPRを選びます。マージ後はmainを使えます。
 
 ```sh
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
@@ -54,7 +52,7 @@ Clientは `server_enabled = false` に設定し、受信側A2Aルートを持ち
 
 ## ① 基本テストを実行
 
-Ruby 3.4.10、Bundlerが必要です。Railsホストの`net-imap`は修正版`~>0.5.15`を明示指定します。
+Ruby 3.4.10、Rails 8.1.4.1、Bundlerが必要です。Railsホストの`net-imap`は修正版`~>0.5.15`を明示指定します。
 
 ```bash
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
@@ -124,7 +122,7 @@ bundle exec ruby bin/probe
 
 本番公開の認証、権限、監査、耐久性、レート制限については [Issue #11](https://github.com/cuichangquan/a2a-rails/issues/11) を参照してください。
 
-## 公開Gemの検証記録
+## 過去の公開Gem検証記録（Rails 8.1.4）
 
 2026-11-15、Linux x86_64 / Ruby 3.4.12 / Rails 8.1.4で、両アプリが
 上記SHA256の公開0.4.0 Gemを読み込むことを確認しました。Clientは14 tests /
@@ -136,3 +134,13 @@ CIはRuby 3.4.10で別途実行するため、ローカル結果とは区別し�
 `5f6d3bfb76c174484ac5b03eac8cfe72038ee3be` とtreeが一致します。別途、
 [CI 43706040060](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/43706040060)は
 Client `63f37ed7a8c56e666c3039d6851df889932d6494`、Ruby 3.4.10、固定remote Serverで成功しました。
+
+
+## Rails 8.1.4.1の検証
+
+2026-11-15、Linux x86_64 / Ruby 3.4.12でRailsと12個の構成Gemがすべて
+8.1.4.1であることを確認しました。a2a-railsは公開0.4.0の同一SHA256を維持。
+Client 14 tests / 80 assertions、production起動拒否、別プロセスTLS25項目が成功しました。
+ローカルServer `19a592b21bb793eb03938d48ca672b0737f9e011` は新しい固定remote
+`68d929cd93494acd163fb9d12c6309ca916068b7` とtreeが一致し、remoteの明示fetchも確認しました。
+CIはRuby 3.4.10を使い、両アプリのRails版を照合します。ローカル結果と区別してPRの最終commitの結果を確認してください。

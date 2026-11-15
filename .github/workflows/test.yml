@@ -28,6 +28,7 @@ jobs:
             require "bundler"
             require "digest"
             require "a2a-rails"
+            abort "wrong Rails patch" unless Gem.loaded_specs.fetch("rails").version.to_s == "8.1.4.1"
             spec = Gem.loaded_specs.fetch("a2a-rails")
             source = Bundler.load.specs.find { |s| s.name == "a2a-rails" }&.source
             abort "wrong published package bytes" unless Digest::SHA256.file(spec.cache_file).hexdigest == "77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a"
