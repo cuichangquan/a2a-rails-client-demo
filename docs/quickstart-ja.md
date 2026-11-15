@@ -35,7 +35,7 @@ Artifact・別Clientからの再取得が加わります。最短のEcho例は`b
 
 Dataは最上位object、mediaType省略時はapplication/json、明示時も同値に限定します。
 text/Data混在は今回対象外です。既存Hash/Array出力は維持されます。
-AP2正式拡張、File入力、SSE、Task再開、本番公開はこの候補に含みません。
+AP2正式拡張、File入力、SSE、Task再開、本番公開はこの例に含みません。
 
 実通信には既存の一時証明書・TLS bridge・`real_https_echo.rb`を使います。
 通常Clientのlocalhost拒否を解除しません。[英語の実行手順](report.md)に、
@@ -76,7 +76,7 @@ gh run list --repo cuichangquan/a2a-rails-client-demo --workflow interop-https.y
 
 実際にCI内で実行すること：
 
-1. Client (0.4.0) とServer (0.4.0) を **それぞれ公開RubyGemsからインストール**。Serverは固定したマージ済みコミットをチェックアウト。
+1. Client (0.4.0) とServer (0.4.0) を **それぞれ公開RubyGemsからインストール**。Serverは固定したレビュー対象PRコミットをチェックアウト（mainへの統合済みSHAという意味ではありません）。
 2. Serverを `127.0.0.1:3000` のみで起動。
 3. 一時証明書で `127.0.0.1:3443` にTLSブリッジを起動。
 4. ClientがAgent Card取得→SendMessage→Task/Artifact→GetTask/ListTasks→直接Messageを実行。レポートの3件35,000円、Data履歴、月13の拒否も確認。
@@ -131,3 +131,8 @@ bundle exec ruby bin/probe
 80 assertions、production起動拒否、別プロセス間TLSの25項目がすべて成功しました。
 条件送信・3件35,000円・Data履歴/GetTask・月13拒否と既存Echo/directの経路を含みます。
 CIはRuby 3.4.10で別途実行するため、ローカル結果とは区別してPRの該当commitを確認してください。
+
+ローカルServerは `36b1414cc4231812e7516394e602dbdfc73a34f2` で、固定したremote
+`5f6d3bfb76c174484ac5b03eac8cfe72038ee3be` とtreeが一致します。別途、
+[CI 43706040060](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/43706040060)は
+Client `63f37ed7a8c56e666c3039d6851df889932d6494`、Ruby 3.4.10、固定remote Serverで成功しました。

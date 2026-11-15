@@ -161,5 +161,8 @@ Client tests: **14 runs / 80 assertions**, no failures/errors/skips. The Client
 production-boot guard passed. The real separate-process TLS suite passed all
 **25 checks**, including report conditions/result/history, invalid month,
 Echo/Task/direct Message/ListTasks/CancelTask and the existing TLS boundaries.
-The Server source is the exact commit pinned above. GitHub Actions uses Ruby
-3.4.10; its exact-commit result is separate from this local record.
+The local Server was commit `36b1414cc4231812e7516394e602dbdfc73a34f2`,
+whose tree is identical to remote pin `5f6d3bfb76c174484ac5b03eac8cfe72038ee3be`.
+Separately, [GitHub Actions run 43706040060](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/43706040060)
+passed on Client `63f37ed7a8c56e666c3039d6851df889932d6494` with Ruby 3.4.10
+and that exact remote Server pin. That CI result is separate from the local record.
