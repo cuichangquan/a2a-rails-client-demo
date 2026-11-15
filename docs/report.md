@@ -1,9 +1,9 @@
 # Structured report example: published 0.4.0
 
-Both Client and Server install `a2a-rails = 0.4.0` from RubyGems.
+Both Client and Server install Rails `= 8.1.4.1` and `a2a-rails = 0.4.0` from RubyGems.
 CI checks source, exact version and SHA256 of the installed package:
 `77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a`.
-The separate Server checkout is pinned to reviewed commit `5f6d3bfb76c174484ac5b03eac8cfe72038ee3be`.
+The separate Server checkout is pinned to reviewed commit `68d929cd93494acd163fb9d12c6309ca916068b7`.
 CI checks out that exact commit, not a moving branch. This pin identifies the
 verified Server source even if main is later squash-merged with an equal tree.
 Earlier fixed-Git candidate evidence is historical and does not substitute for
@@ -52,8 +52,6 @@ from a malformed protocol Part being rejected before Handler execution.
 
 ## Local use
 
-Before PR #4 is merged, run `git switch feat/structured-report-candidate` after cloning. After merge, use main.
-
 ```sh
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
 cd a2a-rails-client-demo
@@ -87,8 +85,8 @@ as well as CI. Install the Server in its own checkout and terminal:
 ```sh
 git clone https://github.com/cuichangquan/a2a-rails-demo.git
 cd a2a-rails-demo
-git fetch origin 5f6d3bfb76c174484ac5b03eac8cfe72038ee3be
-git checkout --detach 5f6d3bfb76c174484ac5b03eac8cfe72038ee3be
+git fetch origin 68d929cd93494acd163fb9d12c6309ca916068b7
+git checkout --detach 68d929cd93494acd163fb9d12c6309ca916068b7
 bundle install
 RAILS_ENV=test bundle exec rails server -b 127.0.0.1 -p 3000
 ```
@@ -153,7 +151,7 @@ new retry/polling APIs and production hosting are outside this change.
 Published-package verification records exact Client and Server commits and
 results. This does not certify public-DNS/public-CA production readiness.
 
-## Published-package validation record
+## Historical published-package validation (Rails 8.1.4)
 
 On 2026-11-15, Linux x86_64 / Ruby 3.4.12 / Rails 8.1.4 loaded the downloaded
 RubyGems 0.4.0 package with the SHA256 above in both independent applications.
@@ -166,3 +164,16 @@ whose tree is identical to remote pin `5f6d3bfb76c174484ac5b03eac8cfe72038ee3be`
 Separately, [GitHub Actions run 43706040060](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/43706040060)
 passed on Client `63f37ed7a8c56e666c3039d6851df889932d6494` with Ruby 3.4.10
 and that exact remote Server pin. That CI result is separate from the local record.
+
+
+## Rails 8.1.4.1 validation
+
+On 2026-11-15, Linux x86_64 / Ruby 3.4.12 loaded Rails 8.1.4.1 and all twelve
+Rails components at that version. The a2a-rails 0.4.0 package digest remained
+unchanged. Client tests: **14 runs / 80 assertions**, no failures/errors/skips;
+production boot refusal and all **25 real separate-process TLS checks** passed.
+The local Server was `19a592b21bb793eb03938d48ca672b0737f9e011`, tree-identical
+to remote pin `68d929cd93494acd163fb9d12c6309ca916068b7` (tree
+`8fa273ec17c97c89e7135ca10dfd5cbebd00e5e8`). The exact remote commit fetch was
+also verified. CI uses Ruby 3.4.10 and asserts Rails 8.1.4.1 in both apps;
+consult the new PR's exact-commit results separately from this local record.

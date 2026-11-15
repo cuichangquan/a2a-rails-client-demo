@@ -53,15 +53,13 @@ does not register a local Agent or Task Store and has no inbound
 
 ## Prerequisites
 
-- Ruby **3.4.10**, Rails **8.1.4**, Bundler
+- Ruby **3.4.10**, Rails **8.1.4.1**, Bundler
 - Published `a2a-rails = 0.4.0` from RubyGems, **not** Git checkout
 - For real remote checks, an approved A2A v1.0 JSON-RPC Agent reachable on a
   **public-destination IP, public-DNS hostname, valid CA-issued HTTPS certificate**
 - No external AI provider, database, Redis, Docker, or GCP required for offline tests
 
 ## Quick Start — run offline tests
-
-Before PR #4 is merged, run `git switch feat/structured-report-candidate` after cloning. After merge, use the default main checkout.
 
 ```bash
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
@@ -84,7 +82,7 @@ Offline tests alone do not establish real HTTPS; see the dedicated interop check
 [Dedicated interop workflow](.github/workflows/interop-https.yml) runs the
 **real public** `A2A::Rails::Client` API from this Client-only Rails app with the
 **installed RubyGems 0.4.0** and a separate, pinned checkout of
-[`a2a-rails-demo`](https://github.com/cuichangquan/a2a-rails-demo/tree/5f6d3bfb76c174484ac5b03eac8cfe72038ee3be),
+[`a2a-rails-demo`](https://github.com/cuichangquan/a2a-rails-demo/tree/68d929cd93494acd163fb9d12c6309ca916068b7),
 using **published RubyGems 0.4.0** for the Server. It exercises the Rails
 `AgentClientDemo::Probe` service, as well as the protocol API.
 
