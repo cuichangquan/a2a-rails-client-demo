@@ -1,0 +1,11 @@
+# frozen_string_literal: true
+source "https://rubygems.org"
+
+ruby "~> 3.4.0"
+gem "rails", "= 8.1.4"
+gem "puma", "~> 6.6"
+# Unpublished Data-input candidate, not a RubyGems 0.4.0 release.
+gem "a2a-rails", git: "https://github.com/cuichangquan/a2a-rails.git",
+  ref: "e13b3ef06698990c6a7b9e1522bf09f7c38e31c5"
+# Audited patched Rails mail dependency (avoid vulnerable 0.4.25).
+gem "net-imap", "~> 0.5.15"

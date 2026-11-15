@@ -15,6 +15,42 @@ a separate approved Agent, while never serving an inbound A2A endpoint.
 > Do not weaken published Gem SSL validation, IP pinning, SSRF policy,
 > HTTP redirects, or auth-origin boundaries to connect to localhost.
 
+## 0.4.0 candidate: call a Rails report with structured Data
+
+The new [report walkthrough](docs/report-candidate.md) sends
+`{"year":2026,"month":10,"department_id":123}` to a separate Rails Service and
+reads a Data Artifact: **3 sales, JPY 35,000**. An invalid month of 13 produces a
+rejected Task with no report. The existing Echo `bin/probe` remains unchanged.
+
+This feature uses the **unpublished fixed Gem SHA in `Gemfile.candidate`**, on
+both Client and Server. It is not available from the released 0.3.0 Server.
+The ordinary Gemfile and historical Step 32 evidence below remain the released
+Echo baseline. Candidate validation and published-release validation are separate.
+Current candidate pins: Gem `e13b3ef06698990c6a7b9e1522bf09f7c38e31c5`,
+Server `db100a2b05c14f0ec693918593adaa141a43cfce`. The candidate source still
+uses a 0.3.0 version constant; the Git revision is its identity until release
+preparation. Both existing workflows retain a published baseline job alongside
+the candidate job, each limited to eight minutes.
+
+```sh
+git clone --branch feat/structured-report-candidate --single-branch https://github.com/cuichangquan/a2a-rails-client-demo.git
+cd a2a-rails-client-demo
+BUNDLE_GEMFILE=Gemfile.candidate bundle install
+BUNDLE_GEMFILE=Gemfile.candidate RAILS_ENV=test bundle exec rake test
+# After configuring an approved independent HTTPS report Agent:
+BUNDLE_GEMFILE=Gemfile.candidate bundle exec ruby bin/report
+BUNDLE_GEMFILE=Gemfile.candidate bundle exec ruby bin/report --invalid-month
+```
+
+Before merge, use that candidate PR branch, not published `main`. The independent
+Server must likewise use the pinned candidate commit in the walkthrough.
+
+The report uses synchronous MemoryStore Tasks, no database/jobs/LLM, and the
+existing Router and isolated TLS verification harness. Application code keeps
+the production Client's HTTPS and destination restrictions. The walkthrough
+separates direct Service calls, local HTTP Server checks, offline Client tests,
+and real isolated TLS communication.
+
 ## Architecture
 
 ```text
@@ -167,7 +203,9 @@ polling or automatic retry.
   The CI-only TLS harness uses an isolated ephemeral test CA and internal
   loopback socket override; TLS peer validation remains enabled. No proxy
   workaround, anonymous public production endpoint or cross-origin token forwarding.
-- Logs/printed summaries contain no request Part text, body or credentials.
+- Echo summaries contain no request Part text, body or credentials. The report
+  command intentionally prints only the six known synthetic aggregate fields,
+  never arbitrary remote Parts, raw protocol bodies or credentials.
   Keep all tokens out of Git, CI, errors and telemetry.
 - Ambiguous SendMessage timeout `may_have_executed = true` must **not** be
   auto-retried. Reconcile remote state according to your app's policy.
@@ -189,9 +227,9 @@ polling or automatic retry.
 - [x] Step 30-4 security regression tests and Step 30-5 reproducibility documentation (reused for Step 32; verify new CI run)
 - [ ] Optional future public-DNS/public-CA direct Client positive-path proof (separate authorization and scope)
 
-The next milestone after passing the isolated Rails-to-Rails HTTPS harness is
-separately approved, public-DNS + public-CA positive-path evidence, without
-changing production security rules.
+The current candidate milestone is **structured Data calling Rails business
+logic**, with the report example on both sides. A public-DNS/public-CA positive
+path remains a separate, optional future task, without changing security rules.
 
 ## License
 

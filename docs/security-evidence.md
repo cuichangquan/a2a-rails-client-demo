@@ -1,7 +1,15 @@
-# Step 32 stable v0.3.0 verification matrix
+# Published Echo baseline and structured-report candidate verification
 
 This demo checks integration safety for the **published** a2a-rails stable 0.3.0.
 It is not a production deployment review.
+
+The 0.4.0 report candidate uses a separate, exact Git revision in
+`Gemfile.candidate`. Its added normal functional checks are
+`report_probe_test.rb` (Data send/result reading and invalid month) and the
+candidate branch of `integration/real_https_echo.rb` (real report, GetTask Data
+history/Artifact, and business rejection). The existing bridge and protection
+checks below are unchanged. Run reports must distinguish candidate SHA evidence
+from historical published 0.3.0 evidence; see [candidate instructions](report-candidate.md).
 
 | Scenario | Test |
 | --- | --- |

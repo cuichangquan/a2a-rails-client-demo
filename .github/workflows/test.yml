@@ -1,4 +1,4 @@
-name: A2A Rails Client-only demo
+name: A2A Rails published and candidate Client-only demo
 
 on:
   push:
@@ -9,9 +9,20 @@ permissions:
 
 jobs:
   demo:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: published
+            gemfile: Gemfile
+          - source: candidate
+            gemfile: Gemfile.candidate
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
     env:
+      BUNDLE_GEMFILE: ${{ matrix.gemfile }}
+      A2A_GEM_SOURCE: ${{ matrix.source }}
+      A2A_CANDIDATE_SHA: e13b3ef06698990c6a7b9e1522bf09f7c38e31c5
       RAILS_ENV: test
       RACK_ENV: test
     steps:
@@ -21,21 +32,24 @@ jobs:
           ruby-version: '3.4.10'
           bundler-cache: false
       - run: bundle install
-      - name: Verify Gem installed from RubyGems, not Git source
+      - name: Verify published or exact candidate source
         run: |
           bundle exec ruby -e '
             require "bundler"
             require "a2a-rails"
             spec = Gem.loaded_specs.fetch("a2a-rails")
             source = Bundler.load.specs.find { |s| s.name == "a2a-rails" }&.source
-            abort "wrong version" unless spec.version.to_s == "0.3.0"
-            abort "wrong constant" unless A2A::Rails::VERSION == "0.3.0"
-            abort "not RubyGems" unless source.is_a?(Bundler::Source::Rubygems)
+            abort "wrong constant" unless A2A::Rails::VERSION == spec.version.to_s
+            if ENV.fetch("A2A_GEM_SOURCE") == "published"
+              abort "wrong published source" unless spec.version.to_s == "0.3.0" && source.is_a?(Bundler::Source::Rubygems)
+            else
+              abort "wrong candidate source" unless source.is_a?(Bundler::Source::Git) && source.revision == ENV.fetch("A2A_CANDIDATE_SHA")
+            end
             json_spec = Bundler.load.specs.find { |s| s.name == "json" }
             imap_spec = Bundler.load.specs.find { |s| s.name == "net-imap" }
             abort "unpatched json" unless json_spec && Gem::Requirement.new(">= 2.19.9", "< 3").satisfied_by?(json_spec.version)
             abort "unpatched net-imap" unless imap_spec && Gem::Requirement.new("~> 0.5.15").satisfied_by?(imap_spec.version)
-            puts "PASS a2a-rails 0.3.0 from RubyGems, json #{json_spec.version}, net-imap #{imap_spec.version}"
+            puts "PASS #{ENV.fetch("A2A_GEM_SOURCE")} source, json #{json_spec.version}, net-imap #{imap_spec.version}"
           '
       - name: Verify Client-only route isolation and probe behavior
         run: bundle exec rake test

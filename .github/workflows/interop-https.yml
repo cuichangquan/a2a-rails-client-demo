@@ -1,4 +1,4 @@
-name: Step 32 stable 0.3.0 independent Rails-to-Rails HTTPS A2A
+name: Published and candidate Rails-to-Rails HTTPS A2A
 
 on:
   push:
@@ -10,9 +10,24 @@ permissions:
 
 jobs:
   independent-https:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: published
+            gemfile: Gemfile
+            server_ref: 1b66a689b2cc8bd16052e9b3a8647072cfe13ec7
+            candidate_sha: ''
+          - source: candidate
+            gemfile: Gemfile.candidate
+            server_ref: db100a2b05c14f0ec693918593adaa141a43cfce
+            candidate_sha: e13b3ef06698990c6a7b9e1522bf09f7c38e31c5
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 8
     env:
+      BUNDLE_GEMFILE: ${{ matrix.gemfile }}
+      A2A_CANDIDATE_SHA: ${{ matrix.candidate_sha }}
+      SERVER_REF: ${{ matrix.server_ref }}
       RAILS_ENV: test
       RACK_ENV: test
       RAILS_MAX_THREADS: "1"
@@ -24,19 +39,24 @@ jobs:
           ruby-version: '3.4.10'
           bundler-cache: false
 
-      - name: Install Client and assert published stable 0.3.0
+      - name: Install Client and verify published or pinned candidate source
         shell: bash
         run: |
           set -euo pipefail
-          bundle install --jobs 4 --retry 3
+          bundle install --jobs 2 --retry 0
           bundle exec ruby -e '
             require "bundler"
             require "a2a-rails"
             s = Gem.loaded_specs.fetch("a2a-rails")
             source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
-            abort "wrong Gem/version/source" unless s.version.to_s == "0.3.0" &&
-              source.is_a?(Bundler::Source::Rubygems)
-            puts "PASS: Client Gem #{s.version} from RubyGems"
+            expected = ENV.fetch("A2A_CANDIDATE_SHA")
+            valid = if expected.empty?
+              s.version.to_s == "0.3.0" && source.is_a?(Bundler::Source::Rubygems)
+            else
+              expected.match?(/\A[0-9a-f]{40}\z/) && source.is_a?(Bundler::Source::Git) && source.revision == expected
+            end
+            abort "wrong Client source" unless valid
+            puts "PASS: Client #{expected.empty? ? "published 0.3.0" : "candidate #{expected}"}"
           '
 
       - name: Checkout pinned independent Server demo
@@ -44,23 +64,28 @@ jobs:
         run: |
           set -euo pipefail
           git clone -q https://github.com/cuichangquan/a2a-rails-demo.git "$RUNNER_TEMP/step30-server"
-          git -C "$RUNNER_TEMP/step30-server" checkout -q --detach 1b66a689b2cc8bd16052e9b3a8647072cfe13ec7
-          test "$(git -C "$RUNNER_TEMP/step30-server" rev-parse HEAD)" = "1b66a689b2cc8bd16052e9b3a8647072cfe13ec7"
+          git -C "$RUNNER_TEMP/step30-server" checkout -q --detach "$SERVER_REF"
+          test "$(git -C "$RUNNER_TEMP/step30-server" rev-parse HEAD)" = "$SERVER_REF"
 
       - name: Install Server under its own isolated Gemfile
         shell: bash
         run: |
           set -euo pipefail
-          export BUNDLE_GEMFILE="$RUNNER_TEMP/step30-server/Gemfile"
-          bundle install --jobs 4 --retry 3
+          export BUNDLE_GEMFILE="$RUNNER_TEMP/step30-server/${{ matrix.gemfile }}"
+          bundle install --jobs 2 --retry 0
           bundle exec ruby -e '
             require "bundler"
             require "a2a-rails"
             s = Gem.loaded_specs.fetch("a2a-rails")
             source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
-            abort "wrong Server Gem" unless s.version.to_s == "0.3.0" &&
-              source.is_a?(Bundler::Source::Rubygems)
-            puts "PASS: independent Server Gem 0.3.0 from RubyGems"
+            expected = ENV.fetch("A2A_CANDIDATE_SHA")
+            valid = if expected.empty?
+              s.version.to_s == "0.3.0" && source.is_a?(Bundler::Source::Rubygems)
+            else
+              expected.match?(/\A[0-9a-f]{40}\z/) && source.is_a?(Bundler::Source::Git) && source.revision == expected
+            end
+            abort "wrong Server source" unless valid
+            puts "PASS: independent Server #{expected.empty? ? "published 0.3.0" : "candidate #{expected}"}"
           '
 
       - name: Start isolated Rails Server on loopback
@@ -69,7 +94,7 @@ jobs:
           set -euo pipefail
           (
             cd "$RUNNER_TEMP/step30-server"
-            export BUNDLE_GEMFILE="$RUNNER_TEMP/step30-server/Gemfile"
+            export BUNDLE_GEMFILE="$RUNNER_TEMP/step30-server/${{ matrix.gemfile }}"
             bundle exec rails server -b 127.0.0.1 -p 3000
           ) > "$RUNNER_TEMP/step30-server.log" 2>&1 &
           echo "$!" > "$RUNNER_TEMP/step30-server.pid"
@@ -120,7 +145,7 @@ jobs:
           tail -n 20 "$RUNNER_TEMP/step30-bridge.log"
           exit 1
 
-      - name: Exercise published stable 0.3.0 Client-only Rails application -> independent Rails Server (real HTTPS)
+      - name: Exercise matching Client and independent Server over real HTTPS
         run: bundle exec ruby test/integration/real_https_echo.rb
 
       - name: Cleanup local-only server and TLS process

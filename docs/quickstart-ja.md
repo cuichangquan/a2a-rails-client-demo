@@ -1,4 +1,59 @@
-# Step 32 — 安定版 0.3.0 日本語 Quick Start / 再現手順
+# 公開0.3.0と構造化レポート候補の日本語 Quick Start
+
+## 0.4.0候補: DataでRailsの集計Serviceを呼ぶ
+
+新しいレポート例は**未公開の固定Gem SHA**を`Gemfile.candidate`で使用します。
+ClientとServerの両方に同じ候補が必要です。通常のGemfileは公開0.3.0のEcho用で、
+この候補をRubyGemsから取得できるという意味ではありません。以下のStep32記録は
+従来の公開版検証であり、新しい候補の検証結果とは区別します。
+
+候補Gemは`e13b3ef06698990c6a7b9e1522bf09f7c38e31c5`、独立Serverは
+`db100a2b05c14f0ec693918593adaa141a43cfce`へ固定しています。候補ソースの
+version定数は公開準備前の0.3.0のままなので、公開RubyGems版とはGit SHAで区別します。
+既存のoffline/TLS workflowは公開版と候補を別jobで検証し、各job上限は8分です。
+
+```sh
+git clone --branch feat/structured-report-candidate --single-branch https://github.com/cuichangquan/a2a-rails-client-demo.git
+cd a2a-rails-client-demo
+BUNDLE_GEMFILE=Gemfile.candidate bundle install
+BUNDLE_GEMFILE=Gemfile.candidate RAILS_ENV=test bundle exec rake test
+# 既存のURL・origin設定で、許可を得た独立HTTPS report Agentに送信する場合:
+BUNDLE_GEMFILE=Gemfile.candidate bundle exec ruby bin/report
+BUNDLE_GEMFILE=Gemfile.candidate bundle exec ruby bin/report --invalid-month
+```
+
+マージ前はこの候補PR branchを使い、公開mainから候補ファイルを取得できるとは
+扱いません。Serverもfeat/structured-report-demo branchの上記固定SHAを使います。
+
+送信Dataは`{"year":2026,"month":10,"department_id":123}`です。
+Serverの既存RouterがDataをreport Skill、textをreply Skillへ振り分けます。
+reportは`input_modes: ["application/json"]`を宣言し、HandlerがRailsの
+`Reports::SalesSummary`を呼びます。同期実行・MemoryStoreを使い、DB・queue・
+LLM・外部サービスは追加しません。固定売上12,000円、18,000円、5,000円から、
+Data Artifactで**3件・合計35,000円（JPY）**を返します。他の年月・部署は対象外です。
+
+返却項目はyear、month、department_id、sales_count、total_amount、currencyです。
+Clientは送信後にGetTaskで一度再取得し、同じ集計結果を確認して表示します。
+月13の条件は`TASK_STATE_REJECTED`となりreportを返しません。自動retryやpollingはしません。
+同じServiceを直接呼ぶ場合は集計だけで、A2A経由では通信・Skill選択・Task保存・
+Artifact・別Clientからの再取得が加わります。最短のEcho例は`bin/probe`に残ります。
+
+Dataは最上位object、mediaType省略時はapplication/json、明示時も同値に限定します。
+text/Data混在は今回対象外です。既存Hash/Array出力は維持されます。
+AP2正式拡張、File入力、SSE、Task再開、本番公開はこの候補に含みません。
+
+実通信には既存の一時証明書・TLS bridge・`real_https_echo.rb`を使います。
+通常Clientのlocalhost拒否を解除しません。ローカル実行も可能な既存手順と、
+固定SHAの照合、条件・結果・GetTask・月13の確認範囲は
+[英語の候補手順](report-candidate.md)に記載しています。
+公開後は両デモを新しい公開Gemへ固定し、RubyGems由来の確認と同じ検証を再実行します。
+
+2026-11-15のローカルLinux/Ruby3.4.12では、Clientは公開版・候補とも14 tests /
+80 assertions、Server業務テストは5 / 17で失敗なしでした。候補の実HTTP・
+実TLSで条件送信、3件35,000円、GetTask、月13拒否と既存Echo/directの経路も確認済みです。
+CIはリポジトリ指定のRuby3.4.10で別途検証し、最終commitの結果は対応PRを参照してください。
+
+## 以下は公開0.3.0のEcho基準手順（Step32）
 
 ## 構成
 
