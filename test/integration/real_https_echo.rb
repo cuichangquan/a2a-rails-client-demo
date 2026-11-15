@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-# TEST-ONLY: actual public Gem + Client-only Rails host -> independent published
-# 0.3.0 Rails Server over an ephemeral TLS bridge and pinned loopback socket.
+# TEST-ONLY: actual public Client API + Client-only Rails host -> independent
+# Rails Server over the existing ephemeral TLS bridge and pinned loopback socket.
+# Both applications load the published RubyGems 0.4.0 package.
 # Do not copy the test-only policy/resolver into runtime application code.
 ENV["RAILS_ENV"] = "test"
 require_relative "../../config/environment"
@@ -69,9 +70,8 @@ module Step30HttpsInterop
   def self.run!
     spec = Gem.loaded_specs.fetch("a2a-rails")
     source = Bundler.load.specs.find { |s| s.name == "a2a-rails" }&.source
-    check!(spec.version.to_s == "0.3.0" &&
-      source.is_a?(Bundler::Source::Rubygems),
-      "real Rails Client uses published RubyGems 0.3.0")
+    check!(spec.version.to_s == "0.4.0" && source.is_a?(Bundler::Source::Rubygems),
+      "real Rails Client uses published RubyGems 0.4.0")
 
     ca = ENV.fetch("STEP30_TLS_CA")
     check!(File.file?(ca), "ephemeral test CA exists")
@@ -110,7 +110,7 @@ module Step30HttpsInterop
     check!(interface && interface[:url] == "#{ORIGIN}/a2a",
       "real HTTPS JSON-RPC v1.0 interface selected from Agent Card")
 
-    message = "Hello from stable 0.3.0 Client-only Rails"
+    message = "Hello from Client-only Rails"
     result = client.send_message(message: {
       message_id: SecureRandom.uuid,
       role: "ROLE_USER",
@@ -121,7 +121,7 @@ module Step30HttpsInterop
     check!(task.dig(:status, :state) == "TASK_STATE_COMPLETED",
       "remote Task completed")
     check!(task.dig(:artifacts, 0, :parts, 0, :text) == "Echo: #{message}",
-      "published server business Service returned expected Artifact")
+      "server business Service returned expected Artifact")
     remote_id = task.fetch(:id)
     fetched = client.get_task(id: remote_id, history_length: 0)
     check!(fetched[:id] == remote_id &&
@@ -156,10 +156,33 @@ module Step30HttpsInterop
     check!(summary[:agent] == "Echo Agent" &&
       summary[:samples].map { |r| r[:kind] } == %w[task message],
       "Client-only Rails Probe service executed against actual remote Rails Server")
+    exercise_report!(client, card)
     check!((policy.paths & ["/.well-known/agent-card.json", "/a2a"]).size == 2,
       "both Agent Card and RPC used real pinned TLS transport")
     check!(policy.origins.uniq == [ORIGIN], "no other HTTPS origin used")
-    puts "STEP32 REAL PUBLISHED STABLE 0.3.0 CLIENT <-> INDEPENDENT RAILS SERVER TLS: PASS"
+    puts "PUBLISHED 0.4.0 CLIENT <-> INDEPENDENT RAILS REPORT SERVER TLS: PASS"
+  end
+
+  def self.exercise_report!(client, card)
+    report_skill = card.fetch(:skills).find { |skill| skill[:id] == "report" }
+    check!(report_skill && report_skill[:input_modes] == ["application/json"],
+      "report Skill explicitly advertises JSON input")
+    conditions = { "year" => 2026, "month" => 10, "department_id" => 123 }
+    expected = conditions.merge("sales_count" => 3, "total_amount" => 35_000, "currency" => "JPY")
+    summary = AgentClientDemo::ReportProbe.new(client: client).run(conditions: conditions)
+    check!(summary[:state] == "TASK_STATE_COMPLETED" && summary[:report] == expected,
+      "real Rails report Service returns three sales totaling JPY 35000")
+    fetched = client.get_task(id: summary.fetch(:task_id), history_length: 1)
+    check!(fetched.dig(:history, 0, :parts, 0, :data) == conditions,
+      "GetTask preserves the original report Data conditions")
+    check!(fetched.dig(:history, 0, :parts, 0, :media_type) == "application/json",
+      "GetTask preserves the report input mediaType")
+    check!(fetched.dig(:artifacts, 0, :parts, 0, :data) == expected,
+      "GetTask preserves the report Data Artifact")
+    rejected = AgentClientDemo::ReportProbe.new(client: client).run(
+      conditions: conditions.merge("month" => 13))
+    check!(rejected[:state] == "TASK_STATE_REJECTED" && !rejected.key?(:report),
+      "invalid business month is rejected without a report or automatic retry")
   end
 end
 

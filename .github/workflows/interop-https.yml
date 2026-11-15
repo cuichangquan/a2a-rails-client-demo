@@ -1,4 +1,4 @@
-name: Step 32 stable 0.3.0 independent Rails-to-Rails HTTPS A2A
+name: Published 0.4.0 Rails-to-Rails HTTPS A2A
 
 on:
   push:
@@ -11,8 +11,10 @@ permissions:
 jobs:
   independent-https:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 8
     env:
+      BUNDLE_GEMFILE: Gemfile
+      SERVER_REF: 5f6d3bfb76c174484ac5b03eac8cfe72038ee3be
       RAILS_ENV: test
       RACK_ENV: test
       RAILS_MAX_THREADS: "1"
@@ -24,19 +26,20 @@ jobs:
           ruby-version: '3.4.10'
           bundler-cache: false
 
-      - name: Install Client and assert published stable 0.3.0
+      - name: Install Client and verify published package source
         shell: bash
         run: |
           set -euo pipefail
-          bundle install --jobs 4 --retry 3
+          bundle install --jobs 2 --retry 0
           bundle exec ruby -e '
             require "bundler"
+            require "digest"
             require "a2a-rails"
             s = Gem.loaded_specs.fetch("a2a-rails")
             source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
-            abort "wrong Gem/version/source" unless s.version.to_s == "0.3.0" &&
-              source.is_a?(Bundler::Source::Rubygems)
-            puts "PASS: Client Gem #{s.version} from RubyGems"
+            abort "wrong published package bytes" unless Digest::SHA256.file(s.cache_file).hexdigest == "77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a"
+            abort "wrong Client source" unless s.version.to_s == "0.4.0" && source.is_a?(Bundler::Source::Rubygems)
+            puts "PASS: Client published 0.4.0"
           '
 
       - name: Checkout pinned independent Server demo
@@ -44,23 +47,25 @@ jobs:
         run: |
           set -euo pipefail
           git clone -q https://github.com/cuichangquan/a2a-rails-demo.git "$RUNNER_TEMP/step30-server"
-          git -C "$RUNNER_TEMP/step30-server" checkout -q --detach 1b66a689b2cc8bd16052e9b3a8647072cfe13ec7
-          test "$(git -C "$RUNNER_TEMP/step30-server" rev-parse HEAD)" = "1b66a689b2cc8bd16052e9b3a8647072cfe13ec7"
+          git -C "$RUNNER_TEMP/step30-server" fetch -q origin "$SERVER_REF"
+          git -C "$RUNNER_TEMP/step30-server" checkout -q --detach "$SERVER_REF"
+          test "$(git -C "$RUNNER_TEMP/step30-server" rev-parse HEAD)" = "$SERVER_REF"
 
       - name: Install Server under its own isolated Gemfile
         shell: bash
         run: |
           set -euo pipefail
           export BUNDLE_GEMFILE="$RUNNER_TEMP/step30-server/Gemfile"
-          bundle install --jobs 4 --retry 3
+          bundle install --jobs 2 --retry 0
           bundle exec ruby -e '
             require "bundler"
+            require "digest"
             require "a2a-rails"
             s = Gem.loaded_specs.fetch("a2a-rails")
             source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
-            abort "wrong Server Gem" unless s.version.to_s == "0.3.0" &&
-              source.is_a?(Bundler::Source::Rubygems)
-            puts "PASS: independent Server Gem 0.3.0 from RubyGems"
+            abort "wrong published package bytes" unless Digest::SHA256.file(s.cache_file).hexdigest == "77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a"
+            abort "wrong Server source" unless s.version.to_s == "0.4.0" && source.is_a?(Bundler::Source::Rubygems)
+            puts "PASS: Server published 0.4.0"
           '
 
       - name: Start isolated Rails Server on loopback
@@ -120,7 +125,7 @@ jobs:
           tail -n 20 "$RUNNER_TEMP/step30-bridge.log"
           exit 1
 
-      - name: Exercise published stable 0.3.0 Client-only Rails application -> independent Rails Server (real HTTPS)
+      - name: Exercise matching Client and independent Server over real HTTPS
         run: bundle exec ruby test/integration/real_https_echo.rb
 
       - name: Cleanup local-only server and TLS process

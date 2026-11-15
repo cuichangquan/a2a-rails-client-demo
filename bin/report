@@ -1,0 +1,25 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+require_relative "../config/environment"
+require "json"
+
+begin
+  abort "Usage: bin/report [--invalid-month]" unless ARGV.empty? || ARGV == ["--invalid-month"]
+  conditions = AgentClientDemo::ReportProbe::CONDITIONS.dup
+  conditions["month"] = 13 if ARGV == ["--invalid-month"]
+  client = AgentClientDemo::ClientFactory.build
+  summary = AgentClientDemo::ReportProbe.new(client: client).run(conditions: conditions)
+  puts JSON.pretty_generate(summary)
+rescue ArgumentError
+  warn "Missing/invalid demo configuration (check A2A_AGENT_CARD_URL and A2A_ALLOWED_ORIGINS)"
+  exit 1
+rescue A2A::Rails::Client::TimeoutError => error
+  warn "A2A timeout (may_have_executed=#{error.may_have_executed}); no automatic retry"
+  exit 1
+rescue A2A::Rails::Client::Error => error
+  warn "A2A request failed: #{error.class.name.split('::').last}"
+  exit 1
+rescue AgentClientDemo::ReportProbe::InvalidResult
+  warn "Remote result does not match the report example; no automatic retry"
+  exit 1
+end
