@@ -1,11 +1,11 @@
-# Candidate Echo, report and continuation verification
+# Published 0.5.0 Echo, report and continuation verification
 
-Both applications load the same pinned unpublished Git candidate. Unit tests
+Both applications load the same published RubyGems 0.5.0 package. Unit tests
 cover Data, question interpretation and bounded answer sending. Real TLS tests
 cover same-Task continuation, repeated questions, waiting cancellation and new
-terminal-answer refusal, alongside existing Echo/report cases. CI verifies Git
-source/version/SHA and host dependency bounds. See [the walkthrough](report.md).
-Historical release passes are not evidence for this candidate. Consult the
+terminal-answer refusal, alongside existing Echo/report cases. CI verifies RubyGems
+source/version/package SHA-256 and host dependency bounds. See [the walkthrough](report.md).
+Historical release passes are not evidence for this published-package check. Consult the
 exact-head CI/review results; a test definition alone is not a passing run.
 This is not a production deployment review.
 
@@ -21,7 +21,7 @@ This is not a production deployment review.
 | Same Task/context question/answer/re-question/cancel | continuation_probe_test.rb + integration/real_https_echo.rb |
 | No automatic answer resend on interruption | continuation_probe_test.rb |
 | Client-only routes absent | client_only_routes_test.rb |
-| Exact pinned Git candidate identity and host dependency bounds (`json`, `net-imap`) | GitHub Actions workflows |
+| Public RubyGems package identity and host dependency bounds (`json`, `net-imap`) | GitHub Actions workflows |
 
 The full integration test uses an isolated loopback TLS bridge and a
 temporary certificate. It is not a public DNS/public CA connection test.

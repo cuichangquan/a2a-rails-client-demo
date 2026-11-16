@@ -2,7 +2,7 @@
 
 # TEST-ONLY: actual public Client API + Client-only Rails host -> independent
 # Rails Server over the existing ephemeral TLS bridge and pinned loopback socket.
-# Both applications load the identical pinned unpublished Git candidate.
+# Both applications load the identical released RubyGems 0.5.0 package.
 # Do not copy the test-only policy/resolver into runtime application code.
 ENV["RAILS_ENV"] = "test"
 require_relative "../../config/environment"
@@ -68,7 +68,7 @@ module Step30HttpsInterop
   end
 
   def self.run!
-    load File.expand_path("../../bin/verify_candidate", __dir__)
+    load File.expand_path("../../bin/verify_release", __dir__)
 
     ca = ENV.fetch("STEP30_TLS_CA")
     check!(File.file?(ca), "ephemeral test CA exists")
@@ -158,7 +158,7 @@ module Step30HttpsInterop
     check!((policy.paths & ["/.well-known/agent-card.json", "/a2a"]).size == 2,
       "both Agent Card and RPC used real pinned TLS transport")
     check!(policy.origins.uniq == [ORIGIN], "no other HTTPS origin used")
-    puts "CANDIDATE CLIENT <-> INDEPENDENT RAILS CONTINUATION SERVER TLS: PASS"
+    puts "PUBLISHED 0.5.0 CLIENT <-> INDEPENDENT RAILS CONTINUATION SERVER TLS: PASS"
   end
 
   def self.exercise_report!(client, card)

@@ -1,4 +1,4 @@
-name: A2A Rails continuation candidate Client-only demo
+name: A2A Rails continuation published 0.5.0 Client-only demo
 
 on:
   push:
@@ -22,8 +22,8 @@ jobs:
           ruby-version: '3.4.10'
           bundler-cache: false
       - run: bundle install
-      - name: Verify pinned unpublished candidate and host dependencies
-        run: bundle exec ruby bin/verify_candidate
+      - name: Verify published package and host dependencies
+        run: bundle exec ruby bin/verify_release
       - name: Verify Client-only route isolation and probe behavior
         run: bundle exec rake test
       - name: Refuse production boot (demo-only)
