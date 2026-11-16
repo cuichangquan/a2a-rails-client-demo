@@ -1,131 +1,99 @@
-# 公開0.4.0の日本語 Quick Start
+# 0.5.0候補の日本語 Quick Start
 
-## DataでRailsの集計Serviceを呼ぶ
+これは**未公開の候補**です。両アプリは `candidate.json` に記録した同じGemの
+完全SHA・版をGitから読み込みます。RubyGemsに0.5.0が公開済みとは扱いません。
+Railsは8.1.4.1です。既存Echo・直接Message・条件の揃った1回集計は維持します。
 
-ClientとServerは両方とも公開RubyGems `a2a-rails = 0.4.0`を使います。
-Git/path候補は不要です。CIは公開版の取得元、版、配布GemのSHA256
-`77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a`
-を照合します。Serverの固定コミットは `68d929cd93494acd163fb9d12c6309ca916068b7` です。
-過去の0.3.0／Git候補の検証記録は、公開0.4.0の結果とは区別します。
+## 基本テスト
+
+Ruby 3.4.10、Bundlerを用意し、候補PRが未統合の間はそのブランチを選びます。
 
 ```sh
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
 cd a2a-rails-client-demo
+git switch feat/task-continuation-demo
 bundle install
+bundle exec ruby bin/verify_candidate
 RAILS_ENV=test bundle exec rake test
-# 許可を得た独立HTTPS report AgentのURL・originを設定した後:
+```
+
+Clientは `server_enabled = false` で受信ルートを持ちません。Serverは別プロセス。
+DB・queue・LLM・外部サービス・新規クラウド資源は不要です。
+
+## 質問→回答→同じTaskで結果取得
+
+1. `year: 2026, month: 10` をDataで送ります。
+2. `TASK_STATE_INPUT_REQUIRED` と、`status.message.parts` 内の部署IDの質問を取得します。
+3. 保存したTask IDを `task_id` に指定して `department_id: 123` を送ります。
+4. 同じTask・contextがCOMPLETEDとなり、3件・合計35,000円を返します。
+
+```ruby
+result = client.send_message(message: {
+  message_id: SecureRandom.uuid, role: "ROLE_USER",
+  parts: [{ data: { "year" => 2026, "month" => 10 } }]
+})
+id = result.task.fetch(:id)
+waiting = client.get_task(id: id, history_length: 0)
+question = waiting.dig(:status, :message, :parts)
+answer = client.send_message(message: {
+  message_id: SecureRandom.uuid, role: "ROLE_USER", task_id: id,
+  parts: [{ data: { "department_id" => 123 } }]
+})
+final = client.get_task(id: id, history_length: 0)
+```
+
+Data内のキーは文字列、プロトコルDTOはsymbolです。元の年月と追加回答はServer
+アプリが許可した項目だけ結合します。Gemは任意JSONを自動マージしません。
+`message` は今回の入力、`context[:history]` は今回を含む履歴です。質問用の
+`InputRequired` はGem自身の型で、HandlerにSDK型を要求しません。
+通常のHash出力は業務データのままです。Task IDは会話全体で同じで、Gem内部の
+実行ターンIDは古いJobの後着による上書きを防ぐために別管理します。
+
+許可済みの独立HTTPS Agentを設定した場合だけ、次を実行できます。
+
+```sh
+bundle exec ruby bin/probe
 bundle exec ruby bin/report
 bundle exec ruby bin/report --invalid-month
+bundle exec ruby bin/continue_report
+bundle exec ruby bin/continue_report --reask
+bundle exec ruby bin/continue_report --cancel
+bundle exec ruby bin/continue_report --after-completion # new answer is refused
 ```
 
-送信Dataは`{"year":2026,"month":10,"department_id":123}`です。
-Serverの既存RouterがDataをreport Skill、textをreply Skillへ振り分けます。
-reportは`input_modes: ["application/json"]`を宣言し、HandlerがRailsの
-`Reports::SalesSummary`を呼びます。同期実行・MemoryStoreを使い、DB・queue・
-LLM・外部サービスは追加しません。固定売上12,000円、18,000円、5,000円から、
-Data Artifactで**3件・合計35,000円（JPY）**を返します。他の年月・部署は対象外です。
+`--reask` は年→月→部署の順に2回質問、`--cancel` は入力待ち中のキャンセルです。
+月13は従来どおりREJECTED。完了・キャンセル後の新しい回答はUnsupportedOperation (-32004)で拒否されます。
+入力はobject Dataのみ、text/Data混在入力は追加しません。質問の出力はtextとData。
+応答の `history_length: 0` は保存入力を消しません。Serverは同期MemoryStoreなので、
+**再起動すると入力待ちTaskを失います**。永続Storeや実workerの保証はGem本体の検証対象です。
 
-返却項目はyear、month、department_id、sales_count、total_amount、currencyです。
-Clientは送信後にGetTaskで一度再取得し、同じ集計結果を確認して表示します。
-月13の条件は`TASK_STATE_REJECTED`となりreportを返しません。自動retryやpollingはしません。
-同じServiceを直接呼ぶ場合は集計だけで、A2A経由では通信・Skill選択・Task保存・
-Artifact・別Clientからの再取得が加わります。最短のEcho例は`bin/probe`に残ります。
+## 実TLS通信
 
-Dataは最上位object、mediaType省略時はapplication/json、明示時も同値に限定します。
-text/Data混在は今回対象外です。既存Hash/Array出力は維持されます。
-AP2正式拡張、File入力、SSE、Task再開、本番公開はこの例に含みません。
+[専用CI](../.github/workflows/interop-https.yml)は独立Serverの完全SHAを固定し、
+両側の候補Gemの取得元・版・SHAとcandidate.jsonの一致を照合します。その後、
+ループバックHTTP Serverと一時証明書のTLSブリッジを別プロセスで起動します。
+Echo・1回集計・質問回答・再質問・キャンセル・終端Taskへの新しい回答の拒否を確認します。
+通常ClientのHTTPS、宛先、CA、SNI・ホスト名検証は緩めません。テスト限定でloopback
+ソケットを指定し、通常のloopback拒否とホスト名不一致の拒否も検証します。
+[英語の詳細手順](report.md)参照。公開DNS/公開CA、本番環境、A2A全仕様認証ではありません。
 
-実通信には既存の一時証明書・TLS bridge・`real_https_echo.rb`を使います。
-通常Clientのlocalhost拒否を解除しません。[英語の実行手順](report.md)に、
-Serverの起動とClientからのTLS実通信手順があります。
+通信失敗時の自動再送・汎用pollingはしません。送信済みか不明なら状態を確認し、
+Gemの同一messageId再送契約に従います。無条件に新しいIDで再送しません。
+固定質問と合成集計値のみ表示し、認証情報・任意Parts・例外本文はログに出しません。
+認証を使う場合は `.env.example` のtokenと正確な宛先originを必ずセットにします。
+Serverは匿名のローカルデモであり、業務認可や外部処理のexactly-onceを保証しません。
+SSE・OAuth・AUTH_REQUIRED・AP2拡張・本番公開は対象外です。
 
-## 通常操作と実通信の確認
+## 正式公開後の別作業
 
-## 構成
-
-| 役割 | リポジトリ | 公開Gem |
-| --- | --- | --- |
-| A2A Client | [a2a-rails-client-demo](https://github.com/cuichangquan/a2a-rails-client-demo) | `0.4.0` |
-| A2A Server (Echo / Report) | [a2a-rails-demo](https://github.com/cuichangquan/a2a-rails-demo) | `0.4.0` |
-
-Clientは `server_enabled = false` に設定し、受信側A2Aルートを持ちません。Serverは別リポジトリで正式版`0.4.0`に更新したEchoデモを利用します。両アプリは異なるBundler環境で公開Gemをロードします。
-
-## ① 基本テストを実行
-
-Ruby 3.4.10、Rails 8.1.4.1、Bundlerが必要です。Railsホストの`net-imap`は修正版`~>0.5.15`を明示指定します。
-
-```bash
-git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
-cd a2a-rails-client-demo
-bundle install
-RAILS_ENV=test bundle exec rake test
-```
-
-## ② Rails同士の実HTTPS通信を再現
-
-[GitHub Actions: Independent Rails-to-Rails HTTPS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/workflows/interop-https.yml) から既存の成功ログを閲覧できます。権限がある場合は **Run workflow** で再実行できます。
-
-GitHub CLIの場合：
-
-```bash
-gh workflow run interop-https.yml --repo cuichangquan/a2a-rails-client-demo
-gh run list --repo cuichangquan/a2a-rails-client-demo --workflow interop-https.yml --limit 3
-```
-
-実際にCI内で実行すること：
-
-1. Client (0.4.0) とServer (0.4.0) を **それぞれ公開RubyGemsからインストール**。Serverは固定したレビュー対象PRコミットをチェックアウト（mainへの統合済みSHAという意味ではありません）。
-2. Serverを `127.0.0.1:3000` のみで起動。
-3. 一時証明書で `127.0.0.1:3443` にTLSブリッジを起動。
-4. ClientがAgent Card取得→SendMessage→Task/Artifact→GetTask/ListTasks→直接Messageを実行。レポートの3件35,000円、Data履歴、月13の拒否も確認。
-5. 終了したTaskのCancelTaskエラーと実際のEcho Service戻り値を確認。
-6. テスト専用プロセスを終了。
-
-```text
-Rails Client 0.4.0
-      │   HTTPS (検証付きTLS / socket IP pinning)
-      ▼
-テスト専用TLSブリッジ（127.0.0.1:3443）
-      │   CI内部のみでHTTP
-      ▼
-独立Rails Echo Server 0.4.0（127.0.0.1:3000）
-      │
-      ▼
-Echo::Reply → Task / Artifact / Message
-```
-
-**注意：** 既存ServerのAgent CardはローカルHTTPを宣言するため、ブリッジではJSONRPCの接続URLだけをテスト用HTTPSへ変更します。通常のClientはプライベートIPを拒否するので、**CI内のテストコード限定**でループバックIPと一時CAを設定しています。これは公開DNS/公開CAの本番相当環境を証明するものではありません。
-
-## ③ 承認済みの外部Agentに接続する
-
-公開DNS・信頼できるCAのHTTPS接続先があり、実際にリクエストを送信する許可を得ている場合のみ：
-
-```bash
-export A2A_AGENT_CARD_URL='https://YOUR_APPROVED_AGENT/.well-known/agent-card.json'
-export A2A_ALLOWED_ORIGINS='https://YOUR_APPROVED_AGENT'
-bundle exec ruby bin/probe
-```
-
-認証が必要な場合は **認証情報と正確なHTTPS originをセットで** 指定してください。Agent CardとRPCで異なるスコープを設定できます。具体的な変数名は [`.env.example`](../.env.example) に記載しています。トークンをGit/CIログへ登録しないでください。
-
-## トラブルシューティング
-
-| 症状 | 確認すること |
-| --- | --- |
-| URL設定エラー | `https://` かつ許可済みoriginに完全一致しているか |
-| Credential originエラー | Tokenとその宛先originをセットで指定したか |
-| DNS/IP拒否 | ローカル/private/metadata IPが含まれていないか。保護を解除しない |
-| TLSエラー | 証明書、有効期限、SNI、ホスト名の一致 |
-| Timeout | Send/Cancelは実行済みの可能性あり。**自動再送しない** |
-| Taskがない | A2AのSendMessageはTaskまたは直接Messageが正常な応答 |
-| ローカルServerに直結できない | Clientの本番向けSSRF制限の仕様。CI専用TLS検証を使う |
-
-本番公開の認証、権限、監査、耐久性、レート制限については [Issue #11](https://github.com/cuichangquan/a2a-rails/issues/11) を参照してください。
+本人の別途承認と実際のGem公開後にのみ、両デモを公開Gemへ固定し、配布物を照合、
+HTTP／TLSを再検証します。候補検証の成功はマージ・タグ・公開・デプロイの承認ではありません。
+過去の検証記録は以下に保存していますが、新しい候補の成功証明には使いません。
 
 ## 過去の公開Gem検証記録（Rails 8.1.4）
 
 2026-11-15、Linux x86_64 / Ruby 3.4.12 / Rails 8.1.4で、両アプリが
-上記SHA256の公開0.4.0 Gemを読み込むことを確認しました。Clientは14 tests /
+公開0.4.0 Gem（SHA256 `77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a`）を読み込むことを確認しました。Clientは14 tests /
 80 assertions、production起動拒否、別プロセス間TLSの25項目がすべて成功しました。
 条件送信・3件35,000円・Data履歴/GetTask・月13拒否と既存Echo/directの経路を含みます。
 CIはRuby 3.4.10で別途実行するため、ローカル結果とは区別してPRの該当commitを確認してください。

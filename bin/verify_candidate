@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+require "bundler"
+require "json"
+require "a2a-rails"
+
+candidate = JSON.parse(File.read(File.expand_path("../candidate.json", __dir__)))
+abort "Candidate revision must be a full commit SHA" unless /\A[0-9a-f]{40}\z/.match?(candidate.fetch("revision"))
+spec = Gem.loaded_specs.fetch("a2a-rails")
+resolved = Bundler.load.specs.find { |entry| entry.name == "a2a-rails" }
+source = resolved&.source
+abort "Wrong candidate version" unless spec.version.to_s == candidate.fetch("version") && A2A::Rails::VERSION == spec.version.to_s
+abort "Candidate must use the exact Git source" unless source.is_a?(Bundler::Source::Git) && source.uri == "https://github.com/cuichangquan/a2a-rails.git" && source.revision == candidate.fetch("revision")
+abort "Wrong Rails patch" unless Gem.loaded_specs.fetch("rails").version.to_s == "8.1.4.1"
+json = Bundler.load.specs.find { |entry| entry.name == "json" }
+imap = Bundler.load.specs.find { |entry| entry.name == "net-imap" }
+abort "Unpatched json" unless json && Gem::Requirement.new(">= 2.19.9", "< 3").satisfied_by?(json.version)
+abort "Unpatched net-imap" unless imap && Gem::Requirement.new("~> 0.5.15").satisfied_by?(imap.version)
+puts "PASS: unpublished a2a-rails #{spec.version} Git candidate #{source.revision}; Rails 8.1.4.1"

@@ -1,15 +1,15 @@
 # a2a-rails-client-demo — Rails 8 A2A outbound Client
 
-A standalone **Client-only Rails 8 application** demonstrating the released
-[`a2a-rails 0.4.0`](https://rubygems.org/gems/a2a-rails/versions/0.4.0)
-stable Gem. It sends A2A v1.0 Agent Card discovery and JSON-RPC requests to
+A standalone **Client-only Rails 8 application** demonstrating an unpublished
+**a2a-rails 0.5.0 candidate**, based on released 0.4.0. The exact Git revision
+and version are in [candidate.json](candidate.json), used by Gemfile and CI. It sends A2A v1.0 Agent Card discovery and JSON-RPC requests to
 a separate approved Agent, while never serving an inbound A2A endpoint.
 
 - Gem and roadmap: https://github.com/cuichangquan/a2a-rails
 - Independent [Rails Server Echo demo](https://github.com/cuichangquan/a2a-rails-demo)
   (Echo and structured report)
 - Historical setup: [Step 30 Issue #117](https://github.com/cuichangquan/a2a-rails/issues/117)
-- Current validation: independent Client and Server both load published **0.4.0**.
+- Current validation target: both hosts load the identical pinned Git candidate; see exact-commit CI for results.
 
 > **Local development/test only.** This Client host refuses production boot.
 > Do not weaken published Gem SSL validation, IP pinning, SSRF policy,
@@ -22,16 +22,28 @@ The [report walkthrough](docs/report.md) sends
 reads a Data Artifact: **3 sales, JPY 35,000**. Month 13 produces a rejected
 Task without a report. Echo remains available through `bin/probe`.
 
-Both demos use **published RubyGems 0.4.0**, not Git/path candidates.
-Install once with `bundle install`; run offline tests with
-`RAILS_ENV=test bundle exec rake test`. With an approved independent HTTPS
-report Agent configured, run `bundle exec ruby bin/report` or
-`bundle exec ruby bin/report --invalid-month`.
+Both demos use the **same pinned, unpublished Git candidate**, not a presumed
+RubyGems 0.5.0 release. Install once with `bundle install`; verify with
+`bundle exec ruby bin/verify_candidate`. Run offline tests with
+`RAILS_ENV=test bundle exec rake test`.
 
-The workflow checks the installed package bytes against SHA256
-`77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a`.
-The report uses synchronous MemoryStore Tasks, no DB/jobs/LLM. The isolated
-TLS test does not relax application HTTPS or destination restrictions.
+With an authorized independent HTTPS report Agent configured:
+
+```sh
+bundle exec ruby bin/report                 # all criteria, one call
+bundle exec ruby bin/report --invalid-month # existing rejection
+bundle exec ruby bin/continue_report        # ask department, answer, same Task
+bundle exec ruby bin/continue_report --reask # two questions, same Task
+bundle exec ruby bin/continue_report --cancel # cancel while waiting
+bundle exec ruby bin/continue_report --after-completion # new answer is refused
+```
+
+The bounded continuation example reads the question through status.message,
+fetches the waiting Task with history_length: 0, sends an explicit answer using
+only task_id, and verifies that the same Task/context completes with 3 sales /
+JPY 35,000. It prints only validated synthetic question/report fields. No generic
+polling/retry API or automatic resend is added. Restarting the synchronous
+MemoryStore Server loses waiting Tasks. See [the walkthrough](docs/report.md).
 
 ## Architecture
 
@@ -54,7 +66,7 @@ does not register a local Agent or Task Store and has no inbound
 ## Prerequisites
 
 - Ruby **3.4.10**, Rails **8.1.4.1**, Bundler
-- Published `a2a-rails = 0.4.0` from RubyGems, **not** Git checkout
+- Exact unpublished Git candidate from `candidate.json` (installed by Bundler)
 - For real remote checks, an approved A2A v1.0 JSON-RPC Agent reachable on a
   **public-destination IP, public-DNS hostname, valid CA-issued HTTPS certificate**
 - No external AI provider, database, Redis, Docker, or GCP required for offline tests
@@ -64,27 +76,27 @@ does not register a local Agent or Task Store and has no inbound
 ```bash
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
 cd a2a-rails-client-demo
+git switch feat/task-continuation-demo # until candidate PR is merged
 bundle install
 RAILS_ENV=test bundle exec rake test
 ```
 
-The offline workflow verifies RubyGems origin and exact installed Gem version,
+The offline workflow verifies exact Git revision and installed candidate version,
 and selects patched `net-imap ~> 0.5.15` for the full Rails host,
 with `json >= 2.19.9, < 3` checked against the installed Gem dependencies,
 both missing inbound routes, Task/direct Message behavior with a stub Client,
 and refusal to boot in Rails production mode. An independent **separate-process
-HTTPS interoperability CI** runs against the separately upgraded published Server demo.
+HTTPS interoperability CI** runs against the separately pinned candidate Server demo.
 
 Offline tests alone do not establish real HTTPS; see the dedicated interop checks below.
 
-## Published 0.4.0 — independent Rails-to-Rails real HTTPS CI
+## Independent Rails-to-Rails real HTTPS candidate CI
 
-[Dedicated interop workflow](.github/workflows/interop-https.yml) runs the
-**real public** `A2A::Rails::Client` API from this Client-only Rails app with the
-**installed RubyGems 0.4.0** and a separate, pinned checkout of
-[`a2a-rails-demo`](https://github.com/cuichangquan/a2a-rails-demo/tree/68d929cd93494acd163fb9d12c6309ca916068b7),
-using **published RubyGems 0.4.0** for the Server. It exercises the Rails
-`AgentClientDemo::Probe` service, as well as the protocol API.
+[Dedicated interop workflow](.github/workflows/interop-https.yml) runs the real
+public Client API with a separate Server checkout pinned by `SERVER_REF` in that
+workflow. Each host independently resolves its Gemfile. CI verifies both exact
+Git candidate identities and identical `candidate.json` files. This is candidate
+source verification, not public RubyGems package identity.
 
 The Server intentionally runs development/test HTTP on `127.0.0.1:3000`,
 advertising an HTTP interface. The test starts a loopback-only bridge on port
@@ -111,12 +123,13 @@ Expected CI checks:
 - ListTasks scoped to context, page metadata, direct Message response
 - CancelTask terminal error and actual `AgentClientDemo::Probe` invocation
 - Report Data, JPY 35,000 aggregate, original GetTask history and invalid-month rejection
+- Question/answer on the same Task, two questions, waiting cancellation and terminal-answer refusal
 - Exact HTTPS origin enforcement, production loopback rejection, wrong TLS SNI/host rejection
 
 **Scope:** a real two-process, two-Gem Rails Client↔Server exchange over
 locally terminated TLS; **not** a no-injection, public-DNS/public-CA or
 internet-facing production integration. No cloud, paid infrastructure, real
-credentials, changes to upstream Server or weaker shipped Client security.
+credentials or weaker shipped Client security.
 For such a production-shaped positive path, use separately approved and
 secured public DNS + HTTPS infrastructure.
 
@@ -126,7 +139,7 @@ secured public DNS + HTTPS infrastructure.
 - [Security verification matrix](docs/security-evidence.md): explicit application-level checks and remaining limitations.
 - [Manual independent TLS workflow](https://github.com/cuichangquan/a2a-rails-client-demo/actions/workflows/interop-https.yml): maintainers may rerun with **Run workflow**.
 
-The published Client demo now requires **both** a credential and its exact,
+The Client demo requires **both** a credential and its exact,
 allowlisted `*_CREDENTIAL_ORIGIN` for Card or RPC authentication.
 The offline tests reject incomplete audiences, unapproved hosts,
 mixed public/private DNS, local or metadata IPs; they check safe error
@@ -199,20 +212,17 @@ polling or automatic retry.
   cannot be reached by the real public-IP-only Client without a separate,
   explicitly approved isolated test harness or verified public HTTPS endpoint.
 
-## Delivery status
+## Delivery / release boundary
 
-- [x] Standalone Rails Client-only app and stable 0.4.0 public API example
-- [x] Unit tests and GitHub Actions workflow defined
-- [x] Published stable 0.4.0 Client-only Rails app; offline CI checks, routes and production-start guard
-- [x] [Historical Step 30 isolated TLS E2E PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38048146899) — RC1 Client + stable 0.2.0 Server (historical evidence, not Step 32 proof)
-- [x] [Historical Step 32 stable 0.3.0 ↔ stable 0.3.0 isolated real TLS E2E CI PASS](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/38097502218) — historical baseline, not 0.4.0 evidence
-- [x] [Parent Gem README cross-link](https://github.com/cuichangquan/a2a-rails/pull/118) merged
-- [x] Step 30-4 security regression tests and Step 30-5 reproducibility documentation (reused for Step 32; verify new CI run)
-- [ ] Optional future public-DNS/public-CA direct Client positive-path proof (separate authorization and scope)
+This branch implements a candidate, not a published 0.5.0 Gem. Existing Echo,
+Direct Message and one-shot report stay available. See the final exact-SHA CI
+and review records before calling the candidate verified. Historical 0.3.0 and
+0.4.0 passes do not establish new continuation behavior.
 
-The current milestone is **structured Data calling Rails business
-logic**, with the report example on both sides. A public-DNS/public-CA positive
-path remains a separate, optional future task, without changing security rules.
+After separately authorized formal Gem publication, replace both demo Git pins
+with the public package, verify the package bytes and repeat HTTP/TLS checks.
+Tagging, release, deployment and new public infrastructure are not implied.
+Public-DNS/public-CA positive-path testing remains a separate optional scope.
 
 ## License
 

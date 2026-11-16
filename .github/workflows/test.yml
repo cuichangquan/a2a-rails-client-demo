@@ -1,4 +1,4 @@
-name: A2A Rails published 0.4.0 Client-only demo
+name: A2A Rails continuation candidate Client-only demo
 
 on:
   push:
@@ -22,24 +22,8 @@ jobs:
           ruby-version: '3.4.10'
           bundler-cache: false
       - run: bundle install
-      - name: Verify published package source
-        run: |
-          bundle exec ruby -e '
-            require "bundler"
-            require "digest"
-            require "a2a-rails"
-            abort "wrong Rails patch" unless Gem.loaded_specs.fetch("rails").version.to_s == "8.1.4.1"
-            spec = Gem.loaded_specs.fetch("a2a-rails")
-            source = Bundler.load.specs.find { |s| s.name == "a2a-rails" }&.source
-            abort "wrong published package bytes" unless Digest::SHA256.file(spec.cache_file).hexdigest == "77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a"
-            abort "wrong constant" unless A2A::Rails::VERSION == spec.version.to_s
-            abort "wrong published source" unless spec.version.to_s == "0.4.0" && source.is_a?(Bundler::Source::Rubygems)
-            json_spec = Bundler.load.specs.find { |s| s.name == "json" }
-            imap_spec = Bundler.load.specs.find { |s| s.name == "net-imap" }
-            abort "unpatched json" unless json_spec && Gem::Requirement.new(">= 2.19.9", "< 3").satisfied_by?(json_spec.version)
-            abort "unpatched net-imap" unless imap_spec && Gem::Requirement.new("~> 0.5.15").satisfied_by?(imap_spec.version)
-            puts "PASS published 0.4.0 source, json #{json_spec.version}, net-imap #{imap_spec.version}"
-          '
+      - name: Verify pinned unpublished candidate and host dependencies
+        run: bundle exec ruby bin/verify_candidate
       - name: Verify Client-only route isolation and probe behavior
         run: bundle exec rake test
       - name: Refuse production boot (demo-only)

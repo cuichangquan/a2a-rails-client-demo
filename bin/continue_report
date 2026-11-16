@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+require_relative "../config/environment"
+require "json"
+
+begin
+  abort "Usage: bin/continue_report [--reask|--cancel|--after-completion]" unless ARGV.empty? ||
+    ARGV == ["--reask"] || ARGV == ["--cancel"] || ARGV == ["--after-completion"]
+  client = AgentClientDemo::ClientFactory.build
+  summary = AgentClientDemo::ContinuationProbe.new(client: client).run(
+    reask: ARGV == ["--reask"], cancel: ARGV == ["--cancel"])
+  if ARGV == ["--after-completion"]
+    begin
+      client.send_message(message: { message_id: SecureRandom.uuid,
+        role: "ROLE_USER", task_id: summary.fetch(:task_id),
+        parts: [{ data: { "department_id" => 123 } }] })
+      raise AgentClientDemo::ContinuationProbe::InvalidResult
+    rescue A2A::Rails::Client::RemoteError => error
+      raise unless error.code == -32_004
+      unchanged = client.get_task(id: summary.fetch(:task_id), history_length: 0)
+      unless unchanged.dig(:status, :state) == "TASK_STATE_COMPLETED"
+        raise AgentClientDemo::ContinuationProbe::InvalidResult
+      end
+      summary[:new_answer_after_completion] = "rejected"
+    end
+  end
+  puts JSON.pretty_generate(summary)
+rescue ArgumentError
+  warn "Missing/invalid demo configuration"
+  exit 1
+rescue A2A::Rails::Client::TimeoutError => error
+  warn "A2A timeout (may_have_executed=#{error.may_have_executed}); no automatic retry"
+  exit 1
+rescue A2A::Rails::Client::Error => error
+  warn "A2A request failed: #{error.class.name.split('::').last}; no automatic retry"
+  exit 1
+rescue AgentClientDemo::ContinuationProbe::InvalidResult
+  warn "Remote result does not match the continuation example; no automatic retry"
+  exit 1
+end
