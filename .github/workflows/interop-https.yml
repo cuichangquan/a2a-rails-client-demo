@@ -1,4 +1,4 @@
-name: Published 0.4.0 Rails-to-Rails HTTPS A2A
+name: Candidate Rails-to-Rails HTTPS continuation
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 8
     env:
       BUNDLE_GEMFILE: Gemfile
-      SERVER_REF: 68d929cd93494acd163fb9d12c6309ca916068b7
+      SERVER_REF: 9ca5c125650390c08ca894f2e1756a2ad0b3fa3d
       RAILS_ENV: test
       RACK_ENV: test
       RAILS_MAX_THREADS: "1"
@@ -26,22 +26,12 @@ jobs:
           ruby-version: '3.4.10'
           bundler-cache: false
 
-      - name: Install Client and verify published package source
+      - name: Install Client and verify pinned candidate
         shell: bash
         run: |
           set -euo pipefail
           bundle install --jobs 2 --retry 0
-          bundle exec ruby -e '
-            require "bundler"
-            require "digest"
-            require "a2a-rails"
-            abort "wrong Rails patch" unless Gem.loaded_specs.fetch("rails").version.to_s == "8.1.4.1"
-            s = Gem.loaded_specs.fetch("a2a-rails")
-            source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
-            abort "wrong published package bytes" unless Digest::SHA256.file(s.cache_file).hexdigest == "77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a"
-            abort "wrong Client source" unless s.version.to_s == "0.4.0" && source.is_a?(Bundler::Source::Rubygems)
-            puts "PASS: Client published 0.4.0"
-          '
+          bundle exec ruby bin/verify_candidate
 
       - name: Checkout pinned independent Server demo
         shell: bash
@@ -58,17 +48,8 @@ jobs:
           set -euo pipefail
           export BUNDLE_GEMFILE="$RUNNER_TEMP/step30-server/Gemfile"
           bundle install --jobs 2 --retry 0
-          bundle exec ruby -e '
-            require "bundler"
-            require "digest"
-            require "a2a-rails"
-            abort "wrong Rails patch" unless Gem.loaded_specs.fetch("rails").version.to_s == "8.1.4.1"
-            s = Gem.loaded_specs.fetch("a2a-rails")
-            source = Bundler.load.specs.find { |x| x.name == "a2a-rails" }&.source
-            abort "wrong published package bytes" unless Digest::SHA256.file(s.cache_file).hexdigest == "77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a"
-            abort "wrong Server source" unless s.version.to_s == "0.4.0" && source.is_a?(Bundler::Source::Rubygems)
-            puts "PASS: Server published 0.4.0"
-          '
+          bundle exec ruby "$RUNNER_TEMP/step30-server/bin/verify_candidate"
+          cmp candidate.json "$RUNNER_TEMP/step30-server/candidate.json"
 
       - name: Start isolated Rails Server on loopback
         shell: bash

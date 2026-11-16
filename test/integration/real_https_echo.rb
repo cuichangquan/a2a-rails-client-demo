@@ -2,7 +2,7 @@
 
 # TEST-ONLY: actual public Client API + Client-only Rails host -> independent
 # Rails Server over the existing ephemeral TLS bridge and pinned loopback socket.
-# Both applications load the published RubyGems 0.4.0 package.
+# Both applications load the identical pinned unpublished Git candidate.
 # Do not copy the test-only policy/resolver into runtime application code.
 ENV["RAILS_ENV"] = "test"
 require_relative "../../config/environment"
@@ -68,10 +68,7 @@ module Step30HttpsInterop
   end
 
   def self.run!
-    spec = Gem.loaded_specs.fetch("a2a-rails")
-    source = Bundler.load.specs.find { |s| s.name == "a2a-rails" }&.source
-    check!(spec.version.to_s == "0.4.0" && source.is_a?(Bundler::Source::Rubygems),
-      "real Rails Client uses published RubyGems 0.4.0")
+    load File.expand_path("../../bin/verify_candidate", __dir__)
 
     ca = ENV.fetch("STEP30_TLS_CA")
     check!(File.file?(ca), "ephemeral test CA exists")
@@ -157,10 +154,11 @@ module Step30HttpsInterop
       summary[:samples].map { |r| r[:kind] } == %w[task message],
       "Client-only Rails Probe service executed against actual remote Rails Server")
     exercise_report!(client, card)
+    exercise_continuation!(client)
     check!((policy.paths & ["/.well-known/agent-card.json", "/a2a"]).size == 2,
       "both Agent Card and RPC used real pinned TLS transport")
     check!(policy.origins.uniq == [ORIGIN], "no other HTTPS origin used")
-    puts "PUBLISHED 0.4.0 CLIENT <-> INDEPENDENT RAILS REPORT SERVER TLS: PASS"
+    puts "CANDIDATE CLIENT <-> INDEPENDENT RAILS CONTINUATION SERVER TLS: PASS"
   end
 
   def self.exercise_report!(client, card)
@@ -183,6 +181,31 @@ module Step30HttpsInterop
       conditions: conditions.merge("month" => 13))
     check!(rejected[:state] == "TASK_STATE_REJECTED" && !rejected.key?(:report),
       "invalid business month is rejected without a report or automatic retry")
+  end
+
+  def self.exercise_continuation!(client)
+    probe = AgentClientDemo::ContinuationProbe.new(client: client)
+    completed = probe.run
+    check!(completed[:state] == "TASK_STATE_COMPLETED" && completed[:questions].length == 1 &&
+      completed.dig(:report, "sales_count") == 3 && completed.dig(:report, "total_amount") == 35_000,
+      "real TLS question, taskId-only answer and same-Task report")
+    repeated = probe.run(reask: true)
+    check!(repeated[:questions].length == 2 && repeated[:state] == "TASK_STATE_COMPLETED",
+      "two questions preserve the original Task and report Skill")
+    canceled = probe.run(cancel: true)
+    check!(canceled[:state] == "TASK_STATE_CANCELED", "input-required Task can be canceled over TLS")
+    [completed, canceled].each do |summary|
+      begin
+        client.send_message(message: { message_id: SecureRandom.uuid, task_id: summary.fetch(:task_id),
+          role: "ROLE_USER", parts: [{ data: { "department_id" => 123 } }] })
+        raise "Unexpected answer accepted for terminal Task"
+      rescue A2A::Rails::Client::RemoteError => error
+        check!(error.code == -32_004, "terminal answer returns unsupported operation")
+        fetched = client.get_task(id: summary.fetch(:task_id), history_length: 0)
+        check!(fetched.dig(:status, :state) == summary[:state],
+          "new answer rejected without reviving terminal Task")
+      end
+    end
   end
 end
 

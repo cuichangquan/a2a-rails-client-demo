@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated CI-only local TLS bridge for the published independent Rails Echo Server.
+"""Isolated CI-only local TLS bridge for the independent Rails Echo Server.
 
 Accepts only loopback; rewrites ONLY the original HTTP Agent Card JSONRPC URL
 to test HTTPS. It does NOT simulate the server's JSON-RPC behavior and must

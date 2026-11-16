@@ -1,179 +1,111 @@
-# Structured report example: published 0.4.0
+# Structured report and continuation: unpublished 0.5.0 candidate
 
-Both Client and Server install Rails `= 8.1.4.1` and `a2a-rails = 0.4.0` from RubyGems.
-CI checks source, exact version and SHA256 of the installed package:
-`77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a`.
-The separate Server checkout is pinned to reviewed commit `68d929cd93494acd163fb9d12c6309ca916068b7`.
-CI checks out that exact commit, not a moving branch. This pin identifies the
-verified Server source even if main is later squash-merged with an equal tree.
-Earlier fixed-Git candidate evidence is historical and does not substitute for
-these published-package checks.
+Both hosts use Rails 8.1.4.1 and the exact Git Gem revision/version recorded in
+`candidate.json`. No unpublished version is fetched from RubyGems. The TLS
+workflow also pins the independent Server checkout with its full `SERVER_REF`.
+`bin/verify_candidate` rejects any different Gem revision/version/source.
 
-## Request, service, and result
-
-The Client sends one Part:
+## Read the question and answer
 
 ```ruby
-client.send_message(message: {
-  message_id: SecureRandom.uuid,
-  role: "ROLE_USER",
-  parts: [{ data: { "year" => 2026, "month" => 10, "department_id" => 123 },
-            media_type: "application/json" }]
+result = client.send_message(message: {
+  message_id: SecureRandom.uuid, role: "ROLE_USER",
+  parts: [{ data: { "year" => 2026, "month" => 10 } }]
 })
+task = result.task
+raise "Expected a question" unless task.dig(:status, :state) == "TASK_STATE_INPUT_REQUIRED"
+question = task.dig(:status, :message, :parts)
+task_id = task.fetch(:id)
+# GetTask can omit response history without erasing saved input:
+waiting = client.get_task(id: task_id, history_length: 0)
+answer = client.send_message(message: {
+  message_id: SecureRandom.uuid, role: "ROLE_USER", task_id: task_id,
+  parts: [{ data: { "department_id" => 123 } }]
+})
+raise "Task changed" unless answer.task.fetch(:id) == task_id
+final = client.get_task(id: task_id, history_length: 0)
 ```
 
-Protocol fields use the public Ruby Client's symbol names. Keys **inside** Data
-remain JSON string keys. The report example does not use message metadata for
-its business inputs. The Server's existing Router selects `report` for Data and
-`reply` for text; report declares `input_modes: ["application/json"]`. The Gem
-enforces the selected Skill's Data contract before invoking its Handler.
-
-Server `Reports::Generate` adapts `message:, context:` to the SDK-independent
-`Reports::SalesSummary` Service. The fixed synthetic rows matching October 2026,
-department 123 are JPY 12,000, 18,000 and 5,000. Other months, departments and
-years are excluded. The returned Data Artifact is:
+The question contains fixed text `Please provide: department_id.` and Data
+`{"missing_fields":["department_id"]}`. The final state is `TASK_STATE_COMPLETED`,
+with Data Artifact:
 
 ```json
 {"year":2026,"month":10,"department_id":123,"sales_count":3,"total_amount":35000,"currency":"JPY"}
 ```
 
-Calling the Service directly inside the Server app performs only this business
-calculation. A2A adds Agent Card discovery, serialization, Router/Skill selection,
-Task handling, a Data Artifact and retrieval by the separate Client. Neither
-path uses an LLM, external service, database or job queue. Tasks use synchronous
-execution and the process-local MemoryStore.
+Protocol DTO fields use symbols; arbitrary Data keys remain strings. `task_id`
+alone reuses the saved context. The Gem returns to the original report Skill;
+the Server application combines only allowed user criteria from its history,
+not the agent question. Later valid input can explicitly replace earlier fields.
+Missing fields trigger questions; supplied invalid month 13 still rejects the
+business Task and produces no report. No arbitrary JSON merging occurs in the Gem.
 
-`AgentClientDemo::ReportProbe` sends once, calls GetTask once, checks that the
-report matches on retrieval and displays only the six named report fields.
-It does not poll, retry, print raw remote Parts or treat every completed A2A
-Task as a valid business report. A month of 13 is an invalid business condition:
-the Server rejects the Task and returns no report Artifact. This is distinct
-from a malformed protocol Part being rejected before Handler execution.
+The same `message:, context:` Handler contract is used. A Gem-owned
+`A2A::Rails::InputRequired.new(text, data: ...)` marks a question; ordinary Hash
+results remain business data. SDK types are not exposed to either demo Handler
+or Client service. The Task ID spans the conversation; core execution-turn IDs
+prevent an old Job from finishing a newer turn. This synchronous demo has no
+Job queue and does not itself validate distributed-worker guarantees.
 
-## Local use
+## Commands and scenarios
 
-```sh
-git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
-cd a2a-rails-client-demo
-bundle install
-RAILS_ENV=test bundle exec rake test
-```
-
-Offline fakes test the Client service, not real network interoperability.
-
-For an **approved independent HTTPS Server** running this report Skill, use the
-same URL, origin and optional origin-scoped credential configuration as
-`bin/probe`:
+After configuring an explicitly authorized independent HTTPS Agent as described
+in the README:
 
 ```sh
-bundle exec ruby bin/report
-bundle exec ruby bin/report --invalid-month
+bundle exec ruby bin/probe                    # minimal Echo/direct Message
+bundle exec ruby bin/report                   # complete criteria, one-shot
+bundle exec ruby bin/report --invalid-month   # month 13, no retry
+bundle exec ruby bin/continue_report          # one question and answer
+bundle exec ruby bin/continue_report --reask  # year -> month -> department
+bundle exec ruby bin/continue_report --cancel # cancel a waiting Task
+bundle exec ruby bin/continue_report --after-completion # new answer is refused
 ```
 
-Expected: `TASK_STATE_COMPLETED` with the six fields above, then
-`TASK_STATE_REJECTED` with no `report` field. Echo remains available through
-`bin/probe`. The application Client still refuses direct localhost/private-IP
-connections. Do not disable HTTPS, hostname verification or the destination
-policy to make these commands reach the local HTTP Server.
+`ContinuationProbe` sends a bounded set of explicit messages; no polling,
+workflow framework or retries. It fetches the waiting Task and final result and
+checks the same Task/context. It only prints validated fixed question fields and
+the synthetic report. It never prints raw errors, credentials or arbitrary Parts.
+A new message after completion/cancellation returns UnsupportedOperation (-32004); this is additionally
+asserted by real TLS CI. The generic Client API remains unchanged.
 
-## Existing isolated TLS integration harness
+A response may be lost after the server executed. Do not blindly resend using a
+new message ID. Inspect Task state and use the Gem's documented duplicate-ID
+contract. The demo does not promise exactly-once effects, automatic recovery or
+perfect detection of an old answer sent with a fresh ID.
 
-The existing `test/support/https_bridge.py` and
-`test/integration/real_https_echo.rb` can be run in a developer test environment
-as well as CI. Install the Server in its own checkout and terminal:
+## Reproduce isolated real TLS
+
+Run the [dedicated workflow](../.github/workflows/interop-https.yml) on this
+candidate branch, or execute its explicit steps in disposable local test
+processes. The workflow installs each host independently, verifies identical
+candidate pins, starts the Server on loopback port 3000, creates a one-day
+self-signed test CA/certificate, starts the existing TLS bridge on 3443, and runs:
 
 ```sh
-git clone https://github.com/cuichangquan/a2a-rails-demo.git
-cd a2a-rails-demo
-git fetch origin 68d929cd93494acd163fb9d12c6309ca916068b7
-git checkout --detach 68d929cd93494acd163fb9d12c6309ca916068b7
-bundle install
-RAILS_ENV=test bundle exec rails server -b 127.0.0.1 -p 3000
+STEP30_TEST_ONLY_TLS=1 STEP30_TLS_CA=/path/to/test.crt \
+  RAILS_ENV=test bundle exec ruby test/integration/real_https_echo.rb
 ```
 
-From the Client checkout, use Python 3, OpenSSL and curl for the existing bridge:
+The command requires the bridge/Server already running. It is not a production
+Client connection recipe. The bridge changes only the Agent Card interface URL.
+The test-only internal policy pins loopback sockets; TLS CA, hostname and SNI
+verification remain on. Runtime Client rejects HTTP/private destinations and
+has no public test-policy configuration. CI verifies normal loopback refusal
+and hostname mismatch refusal as well as Echo, one-shot Data, continuation,
+re-questioning, waiting cancellation and refusal of new terminal answers.
 
-```sh
-tls_dir=$(mktemp -d)
-bridge_pid=''
-cleanup() {
-  test -z "$bridge_pid" || kill "$bridge_pid" 2>/dev/null || true
-  rm -f "$tls_dir/test.key" "$tls_dir/test.crt"
-  rmdir "$tls_dir" 2>/dev/null || true
-}
-trap cleanup EXIT
-openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
-  -keyout "$tls_dir/test.key" -out "$tls_dir/test.crt" \
-  -subj /CN=echo-agent.test -addext subjectAltName=DNS:echo-agent.test >/dev/null 2>&1
-chmod 600 "$tls_dir/test.key"
-python3 test/support/https_bridge.py \
-  --certificate "$tls_dir/test.crt" --key "$tls_dir/test.key" &
-bridge_pid=$!
-for attempt in $(seq 1 30); do
-  if curl --fail --silent --noproxy '*' --cacert "$tls_dir/test.crt" \
-    --resolve echo-agent.test:3443:127.0.0.1 \
-    https://echo-agent.test:3443/.well-known/agent-card.json >/dev/null; then break; fi
-  sleep 1
-done
-export BUNDLE_GEMFILE="$PWD/Gemfile"
-export RAILS_ENV=test
-export STEP30_TEST_ONLY_TLS=1
-export STEP30_TLS_CA="$tls_dir/test.crt"
-bundle exec ruby test/integration/real_https_echo.rb
-cleanup
-trap - EXIT
-```
+The Server uses synchronous MemoryStore: restart loses waiting Tasks. GetTask
+history_length: 0 only limits the response, not inputs retained before restart.
+Durable restart, PostgreSQL races and real worker tests are core Gem gates, not
+claims established by this demo. No public-DNS/public-CA production integration
+or full A2A conformance certification is claimed.
 
-The test requires RubyGems source and version 0.4.0 and always checks report,
-GetTask Data history/Artifact and invalid month alongside Echo/Task/direct
-Message. CI additionally verifies package bytes in both applications.
-Stop the Server with Ctrl-C after the run. The certificate/bridge cleanup runs
-on shell exit. There is no general-purpose localhost connection mode.
+## Publication follow-up
 
-The bridge rewrites only the Agent Card's advertised interface URL. The existing
-test-only loopback transport verifies TLS peer and hostname and remains outside
-application code. Published destination protections are unchanged. This proves
-local two-process TLS behavior, not public-DNS/public-CA production readiness.
-
-The existing offline and TLS workflows now each test published 0.4.0 with an
-eight-minute ceiling per job. Historical 0.3.0 and Git candidate CI runs remain
-historical evidence; consult this PR's exact-commit CI for the public package.
-
-## Supported boundary
-
-Data input is a top-level JSON object. Omitted mediaType defaults to
-`application/json`; an explicit Data mediaType must be `application/json`.
-Mixed text/Data Parts in one Message are not supported in this example.
-Echo remains text-only. New input restrictions do not remove existing Hash/Array
-Data outputs. Formal AP2 extension negotiation, File input, SSE, Task resumption,
-new retry/polling APIs and production hosting are outside this change.
-
-Published-package verification records exact Client and Server commits and
-results. This does not certify public-DNS/public-CA production readiness.
-
-## Historical published-package validation (Rails 8.1.4)
-
-On 2026-11-15, Linux x86_64 / Ruby 3.4.12 / Rails 8.1.4 loaded the downloaded
-RubyGems 0.4.0 package with the SHA256 above in both independent applications.
-Client tests: **14 runs / 80 assertions**, no failures/errors/skips. The Client
-production-boot guard passed. The real separate-process TLS suite passed all
-**25 checks**, including report conditions/result/history, invalid month,
-Echo/Task/direct Message/ListTasks/CancelTask and the existing TLS boundaries.
-The local Server was commit `36b1414cc4231812e7516394e602dbdfc73a34f2`,
-whose tree is identical to remote pin `5f6d3bfb76c174484ac5b03eac8cfe72038ee3be`.
-Separately, [GitHub Actions run 43706040060](https://github.com/cuichangquan/a2a-rails-client-demo/actions/runs/43706040060)
-passed on Client `63f37ed7a8c56e666c3039d6851df889932d6494` with Ruby 3.4.10
-and that exact remote Server pin. That CI result is separate from the local record.
-
-
-## Rails 8.1.4.1 validation
-
-On 2026-11-15, Linux x86_64 / Ruby 3.4.12 loaded Rails 8.1.4.1 and all twelve
-Rails components at that version. The a2a-rails 0.4.0 package digest remained
-unchanged. Client tests: **14 runs / 80 assertions**, no failures/errors/skips;
-production boot refusal and all **25 real separate-process TLS checks** passed.
-The local Server was `19a592b21bb793eb03938d48ca672b0737f9e011`, tree-identical
-to remote pin `68d929cd93494acd163fb9d12c6309ca916068b7` (tree
-`8fa273ec17c97c89e7135ca10dfd5cbebd00e5e8`). The exact remote commit fetch was
-also verified. CI uses Ruby 3.4.10 and asserts Rails 8.1.4.1 in both apps;
-consult the new PR's exact-commit results separately from this local record.
+After separate owner approval and actual Gem publication: replace exact Git
+candidate pins in both hosts with the released RubyGems version, verify the
+public package identity, rerun HTTP and real TLS on the exact resulting commits,
+and update both English/Japanese docs. Candidate checks do not authorize merge,
+release, tagging, deployment or new infrastructure.
