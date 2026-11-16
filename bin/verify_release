@@ -17,4 +17,7 @@ json = Bundler.load.specs.find { |entry| entry.name == "json" }
 imap = Bundler.load.specs.find { |entry| entry.name == "net-imap" }
 abort "Unpatched json" unless json && Gem::Requirement.new(">= 2.19.9", "< 3").satisfied_by?(json.version)
 abort "Unpatched net-imap" unless imap && Gem::Requirement.new("~> 0.5.15").satisfied_by?(imap.version)
+parser = Bundler.load.specs.find { |entry| entry.name == "regexp_parser" }
+abort "Unexpected regexp_parser compatibility version" unless parser && parser.version.to_s == "2.13.1"
+puts "PASS: regexp_parser #{parser.version} (temporary json_schemer compatibility pin)"
 puts "PASS: published RubyGems a2a-rails #{spec.version}, SHA-256 #{release.fetch('sha256')}; Rails 8.1.4.1, json #{json.version}, net-imap #{imap.version}"
