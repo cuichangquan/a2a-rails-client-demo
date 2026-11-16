@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 8
     env:
       BUNDLE_GEMFILE: Gemfile
-      SERVER_REF: 20ee7ba9e04dcaa0a11556a58aabf4fbbba397b6
+      SERVER_REF: 968b566f47b000fc02b4bcf83f1d9be2e7e8971f
       RAILS_ENV: test
       RACK_ENV: test
       RAILS_MAX_THREADS: "1"

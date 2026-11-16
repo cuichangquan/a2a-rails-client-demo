@@ -7,3 +7,6 @@ gem "puma", "~> 6.6"
 gem "a2a-rails", "= 0.5.0"
 # Audited patched Rails mail dependency (avoid vulnerable 0.4.25).
 gem "net-imap", "~> 0.5.15"
+
+# Temporary json_schemer 2.5.0 compatibility pin; see docs/dependency-compatibility.md.
+gem "regexp_parser", "= 2.13.1"
