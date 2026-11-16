@@ -76,7 +76,6 @@ does not register a local Agent or Task Store and has no inbound
 ```bash
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
 cd a2a-rails-client-demo
-git switch chore/public-050 # until this follow-up PR is merged
 bundle install
 RAILS_ENV=test bundle exec rake test
 ```
