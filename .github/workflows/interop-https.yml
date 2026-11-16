@@ -1,4 +1,4 @@
-name: Candidate Rails-to-Rails HTTPS continuation
+name: Published 0.5.0 Rails-to-Rails HTTPS continuation
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 8
     env:
       BUNDLE_GEMFILE: Gemfile
-      SERVER_REF: 9ca5c125650390c08ca894f2e1756a2ad0b3fa3d
+      SERVER_REF: 20ee7ba9e04dcaa0a11556a58aabf4fbbba397b6
       RAILS_ENV: test
       RACK_ENV: test
       RAILS_MAX_THREADS: "1"
@@ -26,12 +26,12 @@ jobs:
           ruby-version: '3.4.10'
           bundler-cache: false
 
-      - name: Install Client and verify pinned candidate
+      - name: Install Client and verify pinned published 0.5.0
         shell: bash
         run: |
           set -euo pipefail
           bundle install --jobs 2 --retry 0
-          bundle exec ruby bin/verify_candidate
+          bundle exec ruby bin/verify_release
 
       - name: Checkout pinned independent Server demo
         shell: bash
@@ -48,8 +48,8 @@ jobs:
           set -euo pipefail
           export BUNDLE_GEMFILE="$RUNNER_TEMP/step30-server/Gemfile"
           bundle install --jobs 2 --retry 0
-          bundle exec ruby "$RUNNER_TEMP/step30-server/bin/verify_candidate"
-          cmp candidate.json "$RUNNER_TEMP/step30-server/candidate.json"
+          bundle exec ruby "$RUNNER_TEMP/step30-server/bin/verify_release"
+          cmp release.json "$RUNNER_TEMP/step30-server/release.json"
 
       - name: Start isolated Rails Server on loopback
         shell: bash

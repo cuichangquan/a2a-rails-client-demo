@@ -1,19 +1,20 @@
-# 0.5.0候補の日本語 Quick Start
+# 公開0.5.0の日本語 Quick Start
 
-これは**未公開の候補**です。両アプリは `candidate.json` に記録した同じGemの
-完全SHA・版をGitから読み込みます。RubyGemsに0.5.0が公開済みとは扱いません。
-Railsは8.1.4.1です。既存Echo・直接Message・条件の揃った1回集計は維持します。
+両アプリは**公開済みRubyGems `a2a-rails = 0.5.0`**を使用します。
+Git/path候補への依存はありません。`release.json` の版・配布GemのSHA-256と、
+インストール済みRubyGemsの取得元・版・キャッシュ内Gemを照合します。
+Railsは8.1.4.1。既存Echo・直接Message・条件の揃った1回集計も維持します。
 
 ## 基本テスト
 
-Ruby 3.4.10、Bundlerを用意し、候補PRが未統合の間はそのブランチを選びます。
+Ruby 3.4.10、Bundlerを用意し、この公開版切替PRが未統合の間はそのブランチを選びます。
 
 ```sh
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
 cd a2a-rails-client-demo
-git switch feat/task-continuation-demo
+git switch chore/public-050 # この切替PRが未統合の間
 bundle install
-bundle exec ruby bin/verify_candidate
+bundle exec ruby bin/verify_release
 RAILS_ENV=test bundle exec rake test
 ```
 
@@ -70,7 +71,7 @@ bundle exec ruby bin/continue_report --after-completion # new answer is refused
 ## 実TLS通信
 
 [専用CI](../.github/workflows/interop-https.yml)は独立Serverの完全SHAを固定し、
-両側の候補Gemの取得元・版・SHAとcandidate.jsonの一致を照合します。その後、
+両側の公開Gemの取得元・版・配布物SHA-256とrelease.jsonの一致を照合します。その後、
 ループバックHTTP Serverと一時証明書のTLSブリッジを別プロセスで起動します。
 Echo・1回集計・質問回答・再質問・キャンセル・終端Taskへの新しい回答の拒否を確認します。
 通常ClientのHTTPS、宛先、CA、SNI・ホスト名検証は緩めません。テスト限定でloopback
@@ -84,11 +85,16 @@ Gemの同一messageId再送契約に従います。無条件に新しいIDで再
 Serverは匿名のローカルデモであり、業務認可や外部処理のexactly-onceを保証しません。
 SSE・OAuth・AUTH_REQUIRED・AP2拡張・本番公開は対象外です。
 
-## 正式公開後の別作業
+## 公開版の照合・固定SHAの管理
 
-本人の別途承認と実際のGem公開後にのみ、両デモを公開Gemへ固定し、配布物を照合、
-HTTP／TLSを再検証します。候補検証の成功はマージ・タグ・公開・デプロイの承認ではありません。
-過去の検証記録は以下に保存していますが、新しい候補の成功証明には使いません。
+公開GemのSHA-256は
+`051cf312b9ff3f11583205b871adcd942f237335a45937a12f483e1a3d7833de`。
+検証スクリプトはネットワーク通信をせず、インストール済みキャッシュを照合します。
+キャッシュが消えた場合は再インストールしてから検証し、照合を省略しません。
+Serverをsquash mergeした後は、Clientの固定SHAがfetch可能で、統合後mainとtreeが
+一致することを確認してからブランチを削除します。維持できなければmainの新SHAへ
+固定し直し、TLSを再検証します。この作業はマージ・タグ・デプロイを含みません。
+以下の過去の記録は、新しい公開版の成功証明とは区別します。
 
 ## 過去の公開Gem検証記録（Rails 8.1.4）
 

@@ -1,9 +1,10 @@
-# Structured report and continuation: unpublished 0.5.0 candidate
+# Structured report and continuation: published 0.5.0
 
-Both hosts use Rails 8.1.4.1 and the exact Git Gem revision/version recorded in
-`candidate.json`. No unpublished version is fetched from RubyGems. The TLS
-workflow also pins the independent Server checkout with its full `SERVER_REF`.
-`bin/verify_candidate` rejects any different Gem revision/version/source.
+Both hosts use Rails 8.1.4.1 and `a2a-rails = 0.5.0` from RubyGems. The exact
+version/package SHA-256 is recorded in `release.json`. No Git/path candidate is
+used. The TLS workflow pins the independent Server checkout with full `SERVER_REF`.
+`bin/verify_release` verifies each installed source/version/cached Gem checksum
+and host dependency bounds without network access.
 
 ## Read the question and answer
 
@@ -78,9 +79,9 @@ perfect detection of an old answer sent with a fresh ID.
 ## Reproduce isolated real TLS
 
 Run the [dedicated workflow](../.github/workflows/interop-https.yml) on this
-candidate branch, or execute its explicit steps in disposable local test
+follow-up branch, or execute its explicit steps in disposable local test
 processes. The workflow installs each host independently, verifies identical
-candidate pins, starts the Server on loopback port 3000, creates a one-day
+public package identity, starts the Server on loopback port 3000, creates a one-day
 self-signed test CA/certificate, starts the existing TLS bridge on 3443, and runs:
 
 ```sh
@@ -102,10 +103,11 @@ Durable restart, PostgreSQL races and real worker tests are core Gem gates, not
 claims established by this demo. No public-DNS/public-CA production integration
 or full A2A conformance certification is claimed.
 
-## Publication follow-up
+## Pin maintenance
 
-After separate owner approval and actual Gem publication: replace exact Git
-candidate pins in both hosts with the released RubyGems version, verify the
-public package identity, rerun HTTP and real TLS on the exact resulting commits,
-and update both English/Japanese docs. Candidate checks do not authorize merge,
-release, tagging, deployment or new infrastructure.
+The public package checksum is
+`051cf312b9ff3f11583205b871adcd942f237335a45937a12f483e1a3d7833de`.
+If the install cache is missing, reinstall before verifying; no checksum skip.
+After a Server squash merge, check that the pinned commit is fetchable and has
+the merged tree. Retain its branch until verified, or repin Client CI to merged
+main and rerun TLS. No merge, tag, release or deployment is part of this update.

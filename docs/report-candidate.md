@@ -1,4 +1,4 @@
-# Report walkthrough
+# Report walkthrough moved
 
-See [the current candidate walkthrough](report.md). Historical 0.4.0 candidate
-and release evidence remains in Git history and PR #4.
+See [the published 0.5.0 walkthrough](report.md). Historical candidate evidence
+remains in Git history and PR #6; it is not released-package validation.

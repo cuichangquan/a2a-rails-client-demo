@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+require "bundler"
+require "digest"
+require "json"
+require "a2a-rails"
+
+release = JSON.parse(File.read(File.expand_path("../release.json", __dir__)))
+spec = Gem.loaded_specs.fetch("a2a-rails")
+resolved = Bundler.load.specs.find { |entry| entry.name == "a2a-rails" }
+abort "Wrong published a2a-rails version" unless spec.version.to_s == release.fetch("version") && A2A::Rails::VERSION == spec.version.to_s
+abort "a2a-rails must come from RubyGems, not Git/path" unless resolved&.source.is_a?(Bundler::Source::Rubygems)
+abort "Published Gem package is missing from the install cache; reinstall before verification" unless File.file?(spec.cache_file)
+abort "Published Gem package checksum mismatch" unless Digest::SHA256.file(spec.cache_file).hexdigest == release.fetch("sha256")
+abort "Wrong Rails patch" unless Gem.loaded_specs.fetch("rails").version.to_s == "8.1.4.1"
+json = Bundler.load.specs.find { |entry| entry.name == "json" }
+imap = Bundler.load.specs.find { |entry| entry.name == "net-imap" }
+abort "Unpatched json" unless json && Gem::Requirement.new(">= 2.19.9", "< 3").satisfied_by?(json.version)
+abort "Unpatched net-imap" unless imap && Gem::Requirement.new("~> 0.5.15").satisfied_by?(imap.version)
+puts "PASS: published RubyGems a2a-rails #{spec.version}, SHA-256 #{release.fetch('sha256')}; Rails 8.1.4.1, json #{json.version}, net-imap #{imap.version}"

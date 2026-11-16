@@ -1,15 +1,16 @@
 # a2a-rails-client-demo — Rails 8 A2A outbound Client
 
-A standalone **Client-only Rails 8 application** demonstrating an unpublished
-**a2a-rails 0.5.0 candidate**, based on released 0.4.0. The exact Git revision
-and version are in [candidate.json](candidate.json), used by Gemfile and CI. It sends A2A v1.0 Agent Card discovery and JSON-RPC requests to
-a separate approved Agent, while never serving an inbound A2A endpoint.
+A standalone **Client-only Rails 8 application** using the published
+**[a2a-rails 0.5.0](https://rubygems.org/gems/a2a-rails/versions/0.5.0)** Gem.
+[release.json](release.json) records the public version and package SHA-256,
+verified locally and in CI. It sends A2A v1.0 Agent Card discovery and JSON-RPC
+to a separate approved Agent, never serving an inbound A2A endpoint.
 
 - Gem and roadmap: https://github.com/cuichangquan/a2a-rails
 - Independent [Rails Server Echo demo](https://github.com/cuichangquan/a2a-rails-demo)
   (Echo and structured report)
 - Historical setup: [Step 30 Issue #117](https://github.com/cuichangquan/a2a-rails/issues/117)
-- Current validation target: both hosts load the identical pinned Git candidate; see exact-commit CI for results.
+- Current validation target: both hosts load the identical public RubyGems 0.5.0 package; see exact-commit CI for results.
 
 > **Local development/test only.** This Client host refuses production boot.
 > Do not weaken published Gem SSL validation, IP pinning, SSRF policy,
@@ -22,9 +23,8 @@ The [report walkthrough](docs/report.md) sends
 reads a Data Artifact: **3 sales, JPY 35,000**. Month 13 produces a rejected
 Task without a report. Echo remains available through `bin/probe`.
 
-Both demos use the **same pinned, unpublished Git candidate**, not a presumed
-RubyGems 0.5.0 release. Install once with `bundle install`; verify with
-`bundle exec ruby bin/verify_candidate`. Run offline tests with
+Both demos use the **published RubyGems 0.5.0 package**, not a Git/path candidate. Install once with `bundle install`; verify with
+`bundle exec ruby bin/verify_release`. Run offline tests with
 `RAILS_ENV=test bundle exec rake test`.
 
 With an authorized independent HTTPS report Agent configured:
@@ -66,7 +66,7 @@ does not register a local Agent or Task Store and has no inbound
 ## Prerequisites
 
 - Ruby **3.4.10**, Rails **8.1.4.1**, Bundler
-- Exact unpublished Git candidate from `candidate.json` (installed by Bundler)
+- Published `a2a-rails = 0.5.0` from RubyGems, no Git/path dependency
 - For real remote checks, an approved A2A v1.0 JSON-RPC Agent reachable on a
   **public-destination IP, public-DNS hostname, valid CA-issued HTTPS certificate**
 - No external AI provider, database, Redis, Docker, or GCP required for offline tests
@@ -76,27 +76,27 @@ does not register a local Agent or Task Store and has no inbound
 ```bash
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
 cd a2a-rails-client-demo
-git switch feat/task-continuation-demo # until candidate PR is merged
+git switch chore/public-050 # until this follow-up PR is merged
 bundle install
 RAILS_ENV=test bundle exec rake test
 ```
 
-The offline workflow verifies exact Git revision and installed candidate version,
+The offline workflow verifies RubyGems source, installed version and cached package SHA-256,
 and selects patched `net-imap ~> 0.5.15` for the full Rails host,
 with `json >= 2.19.9, < 3` checked against the installed Gem dependencies,
 both missing inbound routes, Task/direct Message behavior with a stub Client,
 and refusal to boot in Rails production mode. An independent **separate-process
-HTTPS interoperability CI** runs against the separately pinned candidate Server demo.
+HTTPS interoperability CI** runs against the separately pinned released-Gem Server demo.
 
 Offline tests alone do not establish real HTTPS; see the dedicated interop checks below.
 
-## Independent Rails-to-Rails real HTTPS candidate CI
+## Independent Rails-to-Rails real HTTPS released-Gem CI
 
 [Dedicated interop workflow](.github/workflows/interop-https.yml) runs the real
 public Client API with a separate Server checkout pinned by `SERVER_REF` in that
 workflow. Each host independently resolves its Gemfile. CI verifies both exact
-Git candidate identities and identical `candidate.json` files. This is candidate
-source verification, not public RubyGems package identity.
+public Gem identities and identical `release.json` files. The cached package
+SHA-256 is checked independently in each host.
 
 The Server intentionally runs development/test HTTP on `127.0.0.1:3000`,
 advertising an HTTP interface. The test starts a loopback-only bridge on port
@@ -214,15 +214,20 @@ polling or automatic retry.
 
 ## Delivery / release boundary
 
-This branch implements a candidate, not a published 0.5.0 Gem. Existing Echo,
-Direct Message and one-shot report stay available. See the final exact-SHA CI
-and review records before calling the candidate verified. Historical 0.3.0 and
-0.4.0 passes do not establish new continuation behavior.
+This follow-up uses the actual published 0.5.0 package and retains all continuation
+behavior. Verify the exact-head CI and review results, not historical RC passes.
+`bin/verify_release` checks the installed cached Gem without network requests;
+missing cache fails with a reinstall instruction. Expected package SHA-256:
 
-After separately authorized formal Gem publication, replace both demo Git pins
-with the public package, verify the package bytes and repeat HTTP/TLS checks.
-Tagging, release, deployment and new public infrastructure are not implied.
-Public-DNS/public-CA positive-path testing remains a separate optional scope.
+```
+051cf312b9ff3f11583205b871adcd942f237335a45937a12f483e1a3d7833de
+```
+
+The TLS workflow pins an exact independent Server commit. After a squash merge,
+verify that pin is still fetchable and its tree equals the merged main before
+branch deletion; otherwise repin to the merged main and rerun TLS. This follow-up
+does not create a release, tag or deployment. Public-DNS/public-CA positive-path
+validation remains a separate optional scope.
 
 ## License
 
