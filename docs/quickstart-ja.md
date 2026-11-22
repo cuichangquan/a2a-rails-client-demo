@@ -91,10 +91,8 @@ SSE・OAuth・AUTH_REQUIRED・AP2拡張・本番公開は対象外です。
 `c0848ea37d772dabc628b6e2b3be88187f5aeebea6d5107a3d5f81108085acb1`。
 検証スクリプトはネットワーク通信をせず、インストール済みキャッシュを照合します。
 キャッシュが消えた場合は再インストールしてから検証し、照合を省略しません。
-TLS検証では[ServerのDraft PR #10](https://github.com/cuichangquan/a2a-rails-demo/pull/10)
-の正確なcommitを固定します。Clientの統合前に、そのcommitがServerのmainから到達できることを確認します。
-Serverがsquash/rebaseで統合された場合はtreeの一致を確認し、統合後のServer SHAへ固定し直して
-ClientのTLS検証を再実行します。この作業はマージ・タグ・デプロイを含みません。
+TLS検証の `SERVER_REF` は、Serverのmainから到達できる特定のcommit SHAに固定します。
+固定SHAを変更したら、Clientの相互接続CIを再実行します。新しいタグ・リリース・デプロイは行いません。
 以下の過去の記録は、新しい公開版の成功証明とは区別します。
 
 ## 過去の公開Gem検証記録（Rails 8.1.4）

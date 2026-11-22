@@ -108,7 +108,6 @@ or full A2A conformance certification is claimed.
 The public package checksum is
 `c0848ea37d772dabc628b6e2b3be88187f5aeebea6d5107a3d5f81108085acb1`.
 If the install cache is missing, reinstall before verifying; no checksum skip.
-The draft pins the exact Server PR commit. Before merging the Client, require a
-Server-main-reachable pin. If the Server is squash/rebase merged, verify the
-trees match, repin Client CI to the merged Server commit, and rerun TLS. No
-merge, tag, release or deployment is part of this update.
+The workflow pins `SERVER_REF` to a fixed commit reachable from Server main.
+Rerun Client interop CI whenever the pin changes. No tag, release or deployment
+is part of this update.

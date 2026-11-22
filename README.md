@@ -222,7 +222,10 @@ missing cache fails with a reinstall instruction. Expected package SHA-256:
 c0848ea37d772dabc628b6e2b3be88187f5aeebea6d5107a3d5f81108085acb1
 ```
 
-The TLS workflow currently pins an exact commit from [Server draft PR #10](https://github.com/cuichangquan/a2a-rails-demo/pull/10), not the Server main branch. Before merging the Client, verify that the tested Server commit is reachable from Server main. If the Server is squash/rebase merged, verify tree equivalence, repin to the merged Server commit, and rerun Client interop on the revised head. This follow-up does not create a release, tag or deployment. Public-DNS/public-CA positive-path validation remains separate.
+The TLS workflow pins `SERVER_REF` to a fixed commit reachable from Server main,
+not a moving branch. Rerun Client interop CI whenever the pin changes. This update
+does not create a release, tag or deployment. Public-DNS/public-CA positive-path
+validation remains separate.
 
 ## License
 
