@@ -1,6 +1,6 @@
-# Published 0.5.0 Echo, report and continuation verification
+# Published 0.5.1 Echo, report and continuation verification
 
-Both applications load the same published RubyGems 0.5.0 package. Unit tests
+Both applications load the same published RubyGems 0.5.1 package. Unit tests
 cover Data, question interpretation and bounded answer sending. Real TLS tests
 cover same-Task continuation, repeated questions, waiting cancellation and new
 terminal-answer refusal, alongside existing Echo/report cases. CI verifies RubyGems

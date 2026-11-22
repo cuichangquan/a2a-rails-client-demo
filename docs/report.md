@@ -1,6 +1,6 @@
-# Structured report and continuation: published 0.5.0
+# Structured report and continuation: published 0.5.1
 
-Both hosts use Rails 8.1.4.1 and `a2a-rails = 0.5.0` from RubyGems. The exact
+Both hosts use Rails 8.1.4.1 and `a2a-rails = 0.5.1` from RubyGems. The exact
 version/package SHA-256 is recorded in `release.json`. No Git/path candidate is
 used. The TLS workflow pins the independent Server checkout with full `SERVER_REF`.
 `bin/verify_release` verifies each installed source/version/cached Gem checksum
@@ -106,8 +106,9 @@ or full A2A conformance certification is claimed.
 ## Pin maintenance
 
 The public package checksum is
-`051cf312b9ff3f11583205b871adcd942f237335a45937a12f483e1a3d7833de`.
+`c0848ea37d772dabc628b6e2b3be88187f5aeebea6d5107a3d5f81108085acb1`.
 If the install cache is missing, reinstall before verifying; no checksum skip.
-After a Server squash merge, check that the pinned commit is fetchable and has
-the merged tree. Retain its branch until verified, or repin Client CI to merged
-main and rerun TLS. No merge, tag, release or deployment is part of this update.
+The draft pins the exact Server PR commit. Before merging the Client, require a
+Server-main-reachable pin. If the Server is squash/rebase merged, verify the
+trees match, repin Client CI to the merged Server commit, and rerun TLS. No
+merge, tag, release or deployment is part of this update.

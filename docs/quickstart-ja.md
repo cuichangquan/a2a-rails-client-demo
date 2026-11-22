@@ -1,6 +1,6 @@
-# 公開0.5.0の日本語 Quick Start
+# 公開0.5.1の日本語 Quick Start
 
-両アプリは**公開済みRubyGems `a2a-rails = 0.5.0`**を使用します。
+両アプリは**公開済みRubyGems `a2a-rails = 0.5.1`**を使用します。
 Git/path候補への依存はありません。`release.json` の版・配布GemのSHA-256と、
 インストール済みRubyGemsの取得元・版・キャッシュ内Gemを照合します。
 Railsは8.1.4.1。既存Echo・直接Message・条件の揃った1回集計も維持します。
@@ -88,12 +88,13 @@ SSE・OAuth・AUTH_REQUIRED・AP2拡張・本番公開は対象外です。
 ## 公開版の照合・固定SHAの管理
 
 公開GemのSHA-256は
-`051cf312b9ff3f11583205b871adcd942f237335a45937a12f483e1a3d7833de`。
+`c0848ea37d772dabc628b6e2b3be88187f5aeebea6d5107a3d5f81108085acb1`。
 検証スクリプトはネットワーク通信をせず、インストール済みキャッシュを照合します。
 キャッシュが消えた場合は再インストールしてから検証し、照合を省略しません。
-Serverをsquash mergeした後は、Clientの固定SHAがfetch可能で、統合後mainとtreeが
-一致することを確認してからブランチを削除します。維持できなければmainの新SHAへ
-固定し直し、TLSを再検証します。この作業はマージ・タグ・デプロイを含みません。
+TLS検証では[ServerのDraft PR #10](https://github.com/cuichangquan/a2a-rails-demo/pull/10)
+の正確なcommitを固定します。Clientの統合前に、そのcommitがServerのmainから到達できることを確認します。
+Serverがsquash/rebaseで統合された場合はtreeの一致を確認し、統合後のServer SHAへ固定し直して
+ClientのTLS検証を再実行します。この作業はマージ・タグ・デプロイを含みません。
 以下の過去の記録は、新しい公開版の成功証明とは区別します。
 
 ## 過去の公開Gem検証記録（Rails 8.1.4）

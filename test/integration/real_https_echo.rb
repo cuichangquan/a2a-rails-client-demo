@@ -2,11 +2,12 @@
 
 # TEST-ONLY: actual public Client API + Client-only Rails host -> independent
 # Rails Server over the existing ephemeral TLS bridge and pinned loopback socket.
-# Both applications load the identical released RubyGems 0.5.0 package.
+# Both applications load the identical released RubyGems 0.5.1 package.
 # Do not copy the test-only policy/resolver into runtime application code.
 ENV["RAILS_ENV"] = "test"
 require_relative "../../config/environment"
 require "bundler"
+require "json"
 require "securerandom"
 
 abort "Refuse non-test execution" unless Rails.env.test?
@@ -19,6 +20,37 @@ module Step30HttpsInterop
   def self.check!(condition, label)
     raise "FAILED: #{label}" unless condition
     puts "PASS: #{label}"
+  end
+
+  # Observe only the synthetic Task identifiers and states returned by the real
+  # Client. All requests are still forwarded to its normal TLS transport.
+  class ContinuationObservation
+    attr_reader :events
+
+    def initialize(client)
+      @client = client
+      @events = []
+    end
+
+    def send_message(message:)
+      result = @client.send_message(message: message)
+      record("SendMessage", message[:task_id], result.task,
+        request_context_present: message.key?(:context_id))
+      result
+    end
+
+    def get_task(id:, history_length:)
+      task = @client.get_task(id: id, history_length: history_length)
+      record("GetTask", id, task)
+      task
+    end
+
+    private
+
+    def record(operation, requested_id, task, **metadata)
+      @events << { operation: operation, requested_task_id: requested_id,
+        task_id: task.fetch(:id), state: task.fetch(:status).fetch(:state) }.merge(metadata)
+    end
   end
 
   # This override is deliberately test-scoped and never in app/, Gem or
@@ -158,7 +190,7 @@ module Step30HttpsInterop
     check!((policy.paths & ["/.well-known/agent-card.json", "/a2a"]).size == 2,
       "both Agent Card and RPC used real pinned TLS transport")
     check!(policy.origins.uniq == [ORIGIN], "no other HTTPS origin used")
-    puts "PUBLISHED 0.5.0 CLIENT <-> INDEPENDENT RAILS CONTINUATION SERVER TLS: PASS"
+    puts "PUBLISHED 0.5.1 CLIENT <-> INDEPENDENT RAILS CONTINUATION SERVER TLS: PASS"
   end
 
   def self.exercise_report!(client, card)
@@ -184,8 +216,20 @@ module Step30HttpsInterop
   end
 
   def self.exercise_continuation!(client)
+    observed = ContinuationObservation.new(client)
+    completed = AgentClientDemo::ContinuationProbe.new(client: observed).run
+    first, waiting, answer, final = observed.events
+    same_id = first.fetch(:task_id)
+    check!(observed.events.size == 4 &&
+      observed.events.map { |event| event[:operation] } == %w[SendMessage GetTask SendMessage GetTask] &&
+      observed.events.map { |event| event[:state] } ==
+        %w[TASK_STATE_INPUT_REQUIRED TASK_STATE_INPUT_REQUIRED TASK_STATE_COMPLETED TASK_STATE_COMPLETED] &&
+      observed.events.all? { |event| event[:task_id] == same_id } &&
+      [waiting, answer, final].all? { |event| event[:requested_task_id] == same_id } &&
+      first[:requested_task_id].nil? && answer[:request_context_present] == false,
+      "observed TLS question, task-id-only answer, and completed GetTask share one Task ID")
+    puts "OBSERVED TLS CONTINUATION: #{JSON.generate(observed.events)}"
     probe = AgentClientDemo::ContinuationProbe.new(client: client)
-    completed = probe.run
     check!(completed[:state] == "TASK_STATE_COMPLETED" && completed[:questions].length == 1 &&
       completed.dig(:report, "sales_count") == 3 && completed.dig(:report, "total_amount") == 35_000,
       "real TLS question, taskId-only answer and same-Task report")
