@@ -1,7 +1,7 @@
 # a2a-rails-client-demo — Rails 8 A2A outbound Client
 
 A standalone **Client-only Rails 8 application** using the published
-**[a2a-rails 0.5.0](https://rubygems.org/gems/a2a-rails/versions/0.5.0)** Gem.
+**[a2a-rails 0.5.1](https://rubygems.org/gems/a2a-rails/versions/0.5.1)** Gem.
 [release.json](release.json) records the public version and package SHA-256,
 verified locally and in CI. It sends A2A v1.0 Agent Card discovery and JSON-RPC
 to a separate approved Agent, never serving an inbound A2A endpoint.
@@ -10,7 +10,7 @@ to a separate approved Agent, never serving an inbound A2A endpoint.
 - Independent [Rails Server Echo demo](https://github.com/cuichangquan/a2a-rails-demo)
   (Echo and structured report)
 - Historical setup: [Step 30 Issue #117](https://github.com/cuichangquan/a2a-rails/issues/117)
-- Current validation target: both hosts load the identical public RubyGems 0.5.0 package; see exact-commit CI for results.
+- Current validation target: both hosts load the identical public RubyGems 0.5.1 package; see exact-commit CI for results.
 
 > **Local development/test only.** This Client host refuses production boot.
 > Do not weaken published Gem SSL validation, IP pinning, SSRF policy,
@@ -23,7 +23,7 @@ The [report walkthrough](docs/report.md) sends
 reads a Data Artifact: **3 sales, JPY 35,000**. Month 13 produces a rejected
 Task without a report. Echo remains available through `bin/probe`.
 
-Both demos use the **published RubyGems 0.5.0 package**, not a Git/path candidate. Install once with `bundle install`; verify with
+Both demos use the **published RubyGems 0.5.1 package**, not a Git/path candidate. Install once with `bundle install`; verify with
 `bundle exec ruby bin/verify_release`. Run offline tests with
 `RAILS_ENV=test bundle exec rake test`.
 
@@ -66,7 +66,7 @@ does not register a local Agent or Task Store and has no inbound
 ## Prerequisites
 
 - Ruby **3.4.10**, Rails **8.1.4.1**, Bundler
-- Published `a2a-rails = 0.5.0` from RubyGems, no Git/path dependency
+- Published `a2a-rails = 0.5.1` from RubyGems, no Git/path dependency
 - For real remote checks, an approved A2A v1.0 JSON-RPC Agent reachable on a
   **public-destination IP, public-DNS hostname, valid CA-issued HTTPS certificate**
 - No external AI provider, database, Redis, Docker, or GCP required for offline tests
@@ -213,20 +213,19 @@ polling or automatic retry.
 
 ## Delivery / release boundary
 
-This follow-up uses the actual published 0.5.0 package and retains all continuation
+This follow-up uses the actual published 0.5.1 package and retains all continuation
 behavior. Verify the exact-head CI and review results, not historical RC passes.
 `bin/verify_release` checks the installed cached Gem without network requests;
 missing cache fails with a reinstall instruction. Expected package SHA-256:
 
 ```
-051cf312b9ff3f11583205b871adcd942f237335a45937a12f483e1a3d7833de
+c0848ea37d772dabc628b6e2b3be88187f5aeebea6d5107a3d5f81108085acb1
 ```
 
-The TLS workflow pins an exact independent Server commit. After a squash merge,
-verify that pin is still fetchable and its tree equals the merged main before
-branch deletion; otherwise repin to the merged main and rerun TLS. This follow-up
+The TLS workflow pins `SERVER_REF` to a fixed commit reachable from Server main,
+not a moving branch. Rerun Client interop CI whenever the pin changes. This update
 does not create a release, tag or deployment. Public-DNS/public-CA positive-path
-validation remains a separate optional scope.
+validation remains separate.
 
 ## License
 
