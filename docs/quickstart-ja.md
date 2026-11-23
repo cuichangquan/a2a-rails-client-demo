@@ -7,7 +7,7 @@ Railsは8.1.4.1。既存Echo・直接Message・条件の揃った1回集計も�
 
 ## 基本テスト
 
-Ruby 3.4.10、Bundlerを用意し、この公開版切替PRが未統合の間はそのブランチを選びます。
+Ruby 3.4.13とBundlerを用意します。
 
 ```sh
 git clone https://github.com/cuichangquan/a2a-rails-client-demo.git
@@ -101,7 +101,7 @@ TLS検証の `SERVER_REF` は、Serverのmainから到達できる特定のcommi
 公開0.4.0 Gem（SHA256 `77b36d4c1cc0db5ab028a35556f1495596f930a25922ff2bf29cde761d45132a`）を読み込むことを確認しました。Clientは14 tests /
 80 assertions、production起動拒否、別プロセス間TLSの25項目がすべて成功しました。
 条件送信・3件35,000円・Data履歴/GetTask・月13拒否と既存Echo/directの経路を含みます。
-CIはRuby 3.4.10で別途実行するため、ローカル結果とは区別してPRの該当commitを確認してください。
+当時のCIはRuby 3.4.10で別途実行したため、ローカル結果とは区別してください。
 
 ローカルServerは `36b1414cc4231812e7516394e602dbdfc73a34f2` で、固定したremote
 `5f6d3bfb76c174484ac5b03eac8cfe72038ee3be` とtreeが一致します。別途、
@@ -116,4 +116,4 @@ Client `63f37ed7a8c56e666c3039d6851df889932d6494`、Ruby 3.4.10、固定remote S
 Client 14 tests / 80 assertions、production起動拒否、別プロセスTLS25項目が成功しました。
 ローカルServer `19a592b21bb793eb03938d48ca672b0737f9e011` は新しい固定remote
 `68d929cd93494acd163fb9d12c6309ca916068b7` とtreeが一致し、remoteの明示fetchも確認しました。
-CIはRuby 3.4.10を使い、両アプリのRails版を照合します。ローカル結果と区別してPRの最終commitの結果を確認してください。
+当時のCIはRuby 3.4.10を使い、両アプリのRails版を照合しました。現行のCI結果は対象commitで確認してください。
