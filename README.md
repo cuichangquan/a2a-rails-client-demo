@@ -65,7 +65,7 @@ does not register a local Agent or Task Store and has no inbound
 
 ## Prerequisites
 
-- Ruby **3.4.10**, Rails **8.1.4.1**, Bundler
+- Ruby **3.4.13**, Rails **8.1.4.1**, Bundler
 - Published `a2a-rails = 0.5.1` from RubyGems, no Git/path dependency
 - For real remote checks, an approved A2A v1.0 JSON-RPC Agent reachable on a
   **public-destination IP, public-DNS hostname, valid CA-issued HTTPS certificate**
